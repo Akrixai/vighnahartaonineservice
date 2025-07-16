@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Logo Generator</title>
+</head>
+<body>
+    <canvas id="logoCanvas" width="200" height="200" style="border: 1px solid #ccc;"></canvas>
+    <br><br>
+    <button onclick="generateLogo()">Generate Logo</button>
+    <button onclick="downloadLogo()">Download PNG</button>
+    
+    <script>
+        function generateLogo() {
+            const canvas = document.getElementById('logoCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, 200, 200);
+            
+            // Create gradient
+            const gradient = ctx.createRadialGradient(100, 70, 20, 100, 100, 80);
+            gradient.addColorStop(0, '#ef4444');
+            gradient.addColorStop(1, '#dc2626');
+            
+            // Draw main circle
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(100, 100, 80, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // Draw border
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 4;
+            ctx.stroke();
+            
+            // Draw inner circle
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(100, 100, 60, 0, 2 * Math.PI);
+            ctx.stroke();
+            
+            // Draw main text
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 32px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('विज', 100, 90);
+            
+            // Draw subtitle
+            ctx.font = '14px Arial';
+            ctx.fillText('जनसेवा', 100, 115);
+            
+            // Draw decorative dots
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+            ctx.beginPath();
+            ctx.arc(60, 60, 3, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.arc(140, 60, 3, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.arc(60, 140, 3, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.arc(140, 140, 3, 0, 2 * Math.PI);
+            ctx.fill();
+        }
+        
+        function downloadLogo() {
+            const canvas = document.getElementById('logoCanvas');
+            const link = document.createElement('a');
+            link.download = 'vignaharta.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        }
+        
+        // Generate logo on page load
+        window.onload = generateLogo;
+    </script>
+</body>
+</html>

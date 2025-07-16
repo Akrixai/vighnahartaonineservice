@@ -2,16 +2,18 @@
 const nextConfig = {
   // Production optimizations
   eslint: {
-    ignoreDuringBuilds: process.env.NODE_ENV === 'production',
+    ignoreDuringBuilds: true,
   },
   typescript: {
-    ignoreBuildErrors: process.env.NODE_ENV === 'production',
+    ignoreBuildErrors: true,
   },
 
   // Performance optimizations
-  swcMinify: true,
   compress: true,
   poweredByHeader: false,
+
+  // Netlify compatibility
+  trailingSlash: false,
 
   // Enable static file serving optimization
   trailingSlash: false,

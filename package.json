@@ -11,8 +11,7 @@
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
-    "clean": "rm -rf .next out",
-    "postbuild": "next-sitemap"
+    "clean": "rm -rf .next out"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.10.0",

@@ -12,6 +12,11 @@ export function formatCurrency(amount: number): string {
   }).format(amount)
 }
 
+// PDF-safe currency formatting (avoids encoding issues with rupee symbol)
+export function formatCurrencyForPDF(amount: number): string {
+  return `Rs. ${amount.toFixed(2)}`
+}
+
 export function formatDate(date: Date | string): string {
   const d = new Date(date)
   return d.toLocaleDateString('en-IN', {

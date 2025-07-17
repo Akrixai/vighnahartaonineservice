@@ -85,6 +85,12 @@ export async function POST(request: NextRequest) {
       doc.setFont('helvetica', 'normal');
       doc.text(certificate.company_name, 35, 155);
 
+      // Branch
+      doc.setFont('helvetica', 'bold');
+      doc.text('Branch:', 35, 165);
+      doc.setFont('helvetica', 'normal');
+      doc.text(certificate.branch || 'Main Branch', 35, 175);
+
       // Issue date
       doc.setFont('helvetica', 'bold');
       doc.text('Issue Date:', 120, 145);
@@ -94,24 +100,24 @@ export async function POST(request: NextRequest) {
       // Authorization text
       doc.setFontSize(11);
       doc.setFont('helvetica', 'normal');
-      const authText = `This certificate hereby authorizes ${certificate.retailer_name} to act as an official retailer for ${certificate.company_name} and to provide government services to customers on behalf of the company. This authorization is valid from the date of issue and remains active as long as the retailer maintains good standing with the company.`;
+      const authText = `This certificate hereby authorizes ${certificate.retailer_name} to act as an official retailer for ${certificate.company_name} at ${certificate.branch || 'Main Branch'} branch and to provide government services to customers on behalf of the company. This authorization is valid from the date of issue and remains active as long as the retailer maintains good standing with the company.`;
 
       const splitText = doc.splitTextToSize(authText, 160);
-      doc.text(splitText, 25, 175);
+      doc.text(splitText, 25, 185);
 
       // Verification section
       doc.setFillColor(254, 242, 242); // Light red background
-      doc.rect(25, 210, 160, 30, 'F');
+      doc.rect(25, 220, 160, 30, 'F');
 
       doc.setTextColor(...primaryColor);
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
-      doc.text('Certificate Verification', 105, 225, { align: 'center' });
+      doc.text('Certificate Verification', 105, 235, { align: 'center' });
 
       doc.setTextColor(...textColor);
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Digital Signature: VJS-${certificate.certificate_number}-VERIFIED`, 105, 235, { align: 'center' });
+      doc.text(`Digital Signature: VJS-${certificate.certificate_number}-VERIFIED`, 105, 245, { align: 'center' });
 
       // Footer
       doc.setTextColor(...lightGray);

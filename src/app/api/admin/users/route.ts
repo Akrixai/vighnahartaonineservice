@@ -101,6 +101,7 @@ export async function POST(request: NextRequest) {
       role,
       employee_id,
       department,
+      branch,
       address,
       city,
       state,
@@ -177,6 +178,7 @@ export async function POST(request: NextRequest) {
     if (role === 'EMPLOYEE' || role === 'ADMIN') {
       if (employee_id) userData.employee_id = employee_id;
       if (department) userData.department = department;
+      if (branch) userData.branch = branch;
     }
 
     if (role === 'RETAILER') {
@@ -184,6 +186,7 @@ export async function POST(request: NextRequest) {
       if (city) userData.city = city;
       if (state) userData.state = state;
       if (pincode) userData.pincode = pincode;
+      if (branch) userData.branch = branch;
     }
 
     const { data: user, error: userError } = await supabaseAdmin

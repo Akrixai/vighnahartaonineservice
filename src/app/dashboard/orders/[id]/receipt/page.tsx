@@ -7,7 +7,7 @@ import DashboardLayout from '@/components/dashboard/layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { UserRole } from '@/types';
-import { formatCurrency, formatDateTime } from '@/lib/utils';
+import { formatCurrency, formatCurrencyForPDF, formatDateTime } from '@/lib/utils';
 import { CheckCircle, Download, Printer, ArrowLeft } from 'lucide-react';
 import jsPDF from 'jspdf';
 
@@ -247,10 +247,10 @@ export default function OrderReceiptPage() {
       // Price details
       const productPrice = order.amount - order.delivery_charges;
       doc.text(`Product Price:`, 25, 237);
-      doc.text(formatCurrency(productPrice), 150, 237);
+      doc.text(formatCurrencyForPDF(productPrice), 150, 237);
 
       doc.text(`Delivery Charges:`, 25, 245);
-      doc.text(formatCurrency(order.delivery_charges), 150, 245);
+      doc.text(formatCurrencyForPDF(order.delivery_charges), 150, 245);
 
       // Total amount highlight
       doc.setFillColor(...primaryColor);
@@ -260,7 +260,7 @@ export default function OrderReceiptPage() {
       doc.setFontSize(16);
       doc.setFont('helvetica', 'bold');
       doc.text('TOTAL AMOUNT:', 25, 265);
-      doc.text(formatCurrency(order.amount), 150, 265);
+      doc.text(formatCurrencyForPDF(order.amount), 150, 265);
 
       // Footer
       doc.setTextColor(...lightGray);

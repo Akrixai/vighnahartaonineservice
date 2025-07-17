@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { UserRole } from '@/types';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, formatCurrencyForPDF } from '@/lib/utils';
 import { Package, Calendar, CreditCard, Truck, Download, Eye, RefreshCw } from 'lucide-react';
 
 import jsPDF from 'jspdf';
@@ -279,10 +279,10 @@ export default function OrdersPage() {
       // Price details
       const productPrice = order.amount - order.delivery_charges;
       doc.text(`Product Price:`, 25, 237);
-      doc.text(formatCurrency(productPrice), 150, 237);
+      doc.text(formatCurrencyForPDF(productPrice), 150, 237);
 
       doc.text(`Delivery Charges:`, 25, 245);
-      doc.text(formatCurrency(order.delivery_charges), 150, 245);
+      doc.text(formatCurrencyForPDF(order.delivery_charges), 150, 245);
 
       // Total amount highlight
       doc.setFillColor(...primaryColor);
@@ -292,7 +292,7 @@ export default function OrdersPage() {
       doc.setFontSize(16);
       doc.setFont('helvetica', 'bold');
       doc.text('TOTAL AMOUNT:', 25, 265);
-      doc.text(formatCurrency(order.amount), 150, 265);
+      doc.text(formatCurrencyForPDF(order.amount), 150, 265);
 
       // Footer
       doc.setTextColor(...lightGray);

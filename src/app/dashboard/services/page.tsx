@@ -157,222 +157,77 @@ export default function ServicesPage() {
           </Card>
         ) : (
           <div className="space-y-6">
-            {/* Government Services */}
-            {(() => {
-              const governmentServices = filteredServices.filter(service =>
-                service.category === 'government' || service.category === 'identity_documents' ||
-                service.category === 'certificates' || service.category === 'educational' ||
-                service.name.toLowerCase().includes('aadhaar') || service.name.toLowerCase().includes('pan')
-              );
+            {/* All Services */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredServices.map((service) => (
 
-              return governmentServices.length > 0 && (
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">🏛️ Government Services</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {/* Special Aadhaar Verification Service */}
-                    <Card className="hover:shadow-lg transition-shadow border-2 border-red-200 bg-gradient-to-br from-red-50 to-red-100">
-                      <CardHeader>
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <CardTitle className="text-lg text-red-800 flex items-center">
-                              🆔 Aadhaar Verification
-                            </CardTitle>
-                            <CardDescription className="text-red-600">Government Identity Service</CardDescription>
-                          </div>
-                          <div className="px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-600">
-                            FREE/PAID
-                          </div>
+                <Card key={service.id} className="hover:shadow-lg transition-shadow border border-red-200">
+                  {/* Service Image */}
+                  {service.image_url && (
+                    <div className="relative h-48 w-full overflow-hidden rounded-t-lg">
+                      <img
+                        src={service.image_url}
+                        alt={service.name}
+                        className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+                        onError={(e) => {
+                          // Hide image if it fails to load
+                          (e.target as HTMLElement).style.display = 'none';
+                        }}
+                      />
+                      <div className="absolute top-2 right-2">
+                        <div className={`px-3 py-1 rounded-full text-sm font-medium backdrop-blur-sm ${
+                          service.is_free ? 'bg-green-100/90 text-green-600' : 'bg-blue-100/90 text-blue-600'
+                        }`}>
+                          {service.is_free ? 'FREE' : formatCurrency(service.price)}
                         </div>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-sm text-red-700 mb-4">
-                          Apply for new Aadhaar card, update existing details, or link mobile number.
-                          Fast processing with document verification.
-                        </p>
-
-                        <div className="space-y-2 mb-4 text-xs text-red-600">
-                          <div className="flex justify-between">
-                            <span>New Aadhaar:</span>
-                            <span className="font-medium">FREE</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Updates:</span>
-                            <span className="font-medium">₹50</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Mobile Linking:</span>
-                            <span className="font-medium">₹25</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Processing Time:</span>
-                            <span className="font-medium">7-15 days</span>
-                          </div>
+                      </div>
+                    </div>
+                  )}
+                  <CardHeader className={service.image_url ? 'pb-2' : ''}>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <CardTitle className="text-lg line-clamp-2">{service.name}</CardTitle>
+                        <CardDescription>{service.category}</CardDescription>
+                      </div>
+                      {!service.image_url && (
+                        <div className={`px-3 py-1 rounded-full text-sm font-medium ${
+                          service.is_free ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'
+                        }`}>
+                          {service.is_free ? 'FREE' : formatCurrency(service.price)}
                         </div>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-gray-600 mb-4 line-clamp-3">
+                      {service.description}
+                    </p>
 
-                        <Button
-                          onClick={() => window.location.href = '/dashboard/services/aadhaar-verification'}
-                          className="w-full bg-red-600 hover:bg-red-700 text-white"
-                        >
-                          📝 Apply Now
-                        </Button>
-                      </CardContent>
-                    </Card>
+                    <div className="space-y-2 mb-4">
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-500">Processing Time:</span>
+                        <span className="font-medium">{service.processing_time_days} days</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-500">Commission:</span>
+                        <span className="font-medium">{service.commission_rate}%</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-500">Documents:</span>
+                        <span className="font-medium">{service.documents?.length || 0} required</span>
+                      </div>
+                    </div>
 
-                    {/* Other Government Services */}
-                    {governmentServices.map((service) => (
-                      <Card key={service.id} className="hover:shadow-lg transition-shadow border border-red-200">
-                        {/* Service Image */}
-                        {service.image_url && (
-                          <div className="relative h-48 w-full overflow-hidden rounded-t-lg">
-                            <img
-                              src={service.image_url}
-                              alt={service.name}
-                              className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
-                              onError={(e) => {
-                                // Hide image if it fails to load
-                                (e.target as HTMLElement).style.display = 'none';
-                              }}
-                            />
-                            <div className="absolute top-2 right-2">
-                              <div className={`px-3 py-1 rounded-full text-sm font-medium backdrop-blur-sm ${
-                                service.is_free ? 'bg-green-100/90 text-green-600' : 'bg-blue-100/90 text-blue-600'
-                              }`}>
-                                {service.is_free ? 'FREE' : formatCurrency(service.price)}
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                        <CardHeader className={service.image_url ? 'pb-2' : ''}>
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <CardTitle className="text-lg line-clamp-2">{service.name}</CardTitle>
-                              <CardDescription>{service.category}</CardDescription>
-                            </div>
-                            {!service.image_url && (
-                              <div className={`px-3 py-1 rounded-full text-sm font-medium ${
-                                service.is_free ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'
-                              }`}>
-                                {service.is_free ? 'FREE' : formatCurrency(service.price)}
-                              </div>
-                            )}
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <p className="text-sm text-gray-600 mb-4 line-clamp-3">
-                            {service.description}
-                          </p>
-
-                          <div className="space-y-2 mb-4">
-                            <div className="flex justify-between">
-                              <span className="text-sm text-gray-500">Processing Time:</span>
-                              <span className="font-medium">{service.processing_time_days} days</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-sm text-gray-500">Commission:</span>
-                              <span className="font-medium">{service.commission_rate}%</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-sm text-gray-500">Documents:</span>
-                              <span className="font-medium">{service.documents?.length || 0} required</span>
-                            </div>
-                          </div>
-
-                          <Button
-                            onClick={() => handleApplyService(service)}
-                            className="w-full bg-red-600 hover:bg-red-700 text-white"
-                          >
-                            📝 Apply Now
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </div>
-              );
-            })()}
-
-            {/* Other Services */}
-            {(() => {
-              const otherServices = filteredServices.filter(service =>
-                !['government', 'identity_documents', 'certificates', 'educational'].includes(service.category) &&
-                !service.name.toLowerCase().includes('aadhaar') && !service.name.toLowerCase().includes('pan')
-              );
-
-              return otherServices.length > 0 && (
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">📋 Other Services</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {otherServices.map((service) => (
-                      <Card key={service.id} className="hover:shadow-lg transition-shadow">
-                        {/* Service Image */}
-                        {service.image_url && (
-                          <div className="relative h-48 w-full overflow-hidden rounded-t-lg">
-                            <img
-                              src={service.image_url}
-                              alt={service.name}
-                              className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
-                              onError={(e) => {
-                                // Hide image if it fails to load
-                                (e.target as HTMLElement).style.display = 'none';
-                              }}
-                            />
-                            <div className="absolute top-2 right-2">
-                              <div className={`px-3 py-1 rounded-full text-sm font-medium backdrop-blur-sm ${
-                                service.is_free ? 'bg-green-100/90 text-green-600' : 'bg-blue-100/90 text-blue-600'
-                              }`}>
-                                {service.is_free ? 'FREE' : formatCurrency(service.price)}
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                        <CardHeader className={service.image_url ? 'pb-2' : ''}>
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <CardTitle className="text-lg line-clamp-2">{service.name}</CardTitle>
-                              <CardDescription>{service.category}</CardDescription>
-                            </div>
-                            {!service.image_url && (
-                              <div className={`px-3 py-1 rounded-full text-sm font-medium ${
-                                service.is_free ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'
-                              }`}>
-                                {service.is_free ? 'FREE' : formatCurrency(service.price)}
-                              </div>
-                            )}
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <p className="text-sm text-gray-600 mb-4 line-clamp-3">
-                            {service.description}
-                          </p>
-
-                          <div className="space-y-2 mb-4">
-                            <div className="flex justify-between">
-                              <span className="text-sm text-gray-500">Processing Time:</span>
-                              <span className="font-medium">{service.processing_time_days} days</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-sm text-gray-500">Commission:</span>
-                              <span className="font-medium">{service.commission_rate}%</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-sm text-gray-500">Documents:</span>
-                              <span className="font-medium">{service.documents?.length || 0} required</span>
-                            </div>
-                          </div>
-
-                          <Button
-                            onClick={() => handleApplyService(service)}
-                            className="w-full bg-red-600 hover:bg-red-700 text-white"
-                          >
-                            📝 Apply Now
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </div>
-              );
-            })()}
+                    <Button
+                      onClick={() => handleApplyService(service)}
+                      className="w-full bg-red-600 hover:bg-red-700 text-white"
+                    >
+                      📝 Apply Now
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </div>
         )}
 

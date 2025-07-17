@@ -43,6 +43,7 @@ CREATE TABLE users (
     -- Admin/Employee specific fields
     employee_id VARCHAR(50),
     department VARCHAR(100),
+    branch VARCHAR(100),
     
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

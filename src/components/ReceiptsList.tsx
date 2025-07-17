@@ -120,13 +120,13 @@ export default function ReceiptsList({ className }: ReceiptsListProps) {
       pdf.text('Service Fee:', 25, yPos + 35);
       pdf.setFont('helvetica', 'normal');
       const serviceFeeAmount = typeof receipt.serviceFee === 'string' ? parseFloat(receipt.serviceFee) : receipt.serviceFee;
-      pdf.text(`₹${serviceFeeAmount.toFixed(2)}`, 70, yPos + 35);
+      pdf.text(`Rs. ${serviceFeeAmount.toFixed(2)}`, 70, yPos + 35);
 
       pdf.setFont('helvetica', 'bold');
       pdf.text('Processing Fee:', 25, yPos + 45);
       pdf.setFont('helvetica', 'normal');
       const processingFeeAmount = typeof receipt.processingFee === 'string' ? parseFloat(receipt.processingFee) : receipt.processingFee;
-      pdf.text(`₹${processingFeeAmount.toFixed(2)}`, 70, yPos + 45);
+      pdf.text(`Rs. ${processingFeeAmount.toFixed(2)}`, 70, yPos + 45);
 
       // Total amount section
       yPos += 60;
@@ -136,7 +136,7 @@ export default function ReceiptsList({ className }: ReceiptsListProps) {
       pdf.setFontSize(12);
       pdf.setFont('helvetica', 'bold');
       const totalAmount = typeof receipt.totalAmount === 'string' ? parseFloat(receipt.totalAmount) : receipt.totalAmount;
-      pdf.text(`TOTAL AMOUNT: ₹${totalAmount.toFixed(2)}`, 25, yPos + 10);
+      pdf.text(`TOTAL AMOUNT: Rs. ${totalAmount.toFixed(2)}`, 25, yPos + 10);
 
       yPos += 25;
       

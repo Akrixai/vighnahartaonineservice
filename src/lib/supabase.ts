@@ -21,6 +21,9 @@ export const supabase = createClient(
   }
 );
 
+// Export alias for compatibility
+export const supabaseClient = supabase;
+
 // Admin client for server-side operations
 let supabaseAdminInstance: ReturnType<typeof createClient> | null = null;
 
@@ -74,6 +77,7 @@ export type Database = {
           occupation: string | null;
           employee_id: string | null;
           department: string | null;
+          branch: string | null;
           created_at: string;
           updated_at: string;
           created_by: string | null;
@@ -95,6 +99,7 @@ export type Database = {
           occupation?: string | null;
           employee_id?: string | null;
           department?: string | null;
+          branch?: string | null;
           created_at?: string;
           updated_at?: string;
           created_by?: string | null;
@@ -116,6 +121,7 @@ export type Database = {
           occupation?: string | null;
           employee_id?: string | null;
           department?: string | null;
+          branch?: string | null;
           created_at?: string;
           updated_at?: string;
           created_by?: string | null;

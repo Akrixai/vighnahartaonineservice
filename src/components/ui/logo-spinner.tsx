@@ -51,14 +51,14 @@ const LogoSpinner: React.FC<LogoSpinnerProps> = ({
           'flex items-center justify-center rounded-full bg-gradient-to-br from-red-600 to-red-700 text-white shadow-lg animate-pulse',
           sizeClasses[size]
         )}>
-          {/* Ganesh Symbol */}
+          {/* Vignaharta Symbol */}
           <div className={cn(
             'font-bold text-white',
-            size === 'sm' ? 'text-xs' : 
-            size === 'md' ? 'text-sm' : 
+            size === 'sm' ? 'text-xs' :
+            size === 'md' ? 'text-sm' :
             size === 'lg' ? 'text-base' : 'text-lg'
           )}>
-            🐘
+            V
           </div>
         </div>
         

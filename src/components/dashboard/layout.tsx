@@ -41,16 +41,20 @@ const menuItems: MenuItem[] = [
   { name: 'Manage Applications', href: '/dashboard/admin/applications', icon: '📋', roles: [UserRole.ADMIN, UserRole.EMPLOYEE] },
   { name: 'Order Management', href: '/dashboard/orders', icon: '📋', roles: [UserRole.ADMIN, UserRole.EMPLOYEE] },
   { name: 'Manage Services', href: '/dashboard/admin/services', icon: '⚙️', roles: [UserRole.ADMIN] },
+  { name: 'Manage Free Services', href: '/dashboard/admin/free-services', icon: '🆓', roles: [UserRole.ADMIN] },
+  { name: 'Free Services Analytics', href: '/dashboard/admin/free-services-analytics', icon: '📊', roles: [UserRole.ADMIN] },
+  { name: 'Website Analytics', href: '/dashboard/admin/analytics', icon: '📈', roles: [UserRole.ADMIN] },
   { name: 'Manage Advertisements', href: '/dashboard/admin/ads', icon: '📢', roles: [UserRole.ADMIN] },
   { name: 'Login Advertisements', href: '/dashboard/admin/advertisements', icon: '🔑', roles: [UserRole.ADMIN] },
   { name: 'Document Approval', href: '/dashboard/admin/documents', icon: '📄', roles: [UserRole.ADMIN] },
+  { name: 'All Certificates', href: '/dashboard/admin/certificates', icon: '🏆', roles: [UserRole.ADMIN] },
+  { name: 'Branch Management', href: '/dashboard/admin/branches', icon: '🏢', roles: [UserRole.ADMIN] },
   { name: 'User Management', href: '/dashboard/admin/users', icon: '👥', roles: [UserRole.ADMIN] },
+  { name: 'Registration Requests', href: '/dashboard/admin/pending-registrations', icon: '👤', roles: [UserRole.ADMIN, UserRole.EMPLOYEE] },
   { name: 'Transactions', href: '/dashboard/transactions', icon: '💳', roles: [UserRole.ADMIN, UserRole.EMPLOYEE, UserRole.RETAILER] },
   { name: 'Wallet Approvals', href: '/dashboard/admin/wallet-approvals', icon: '💰', roles: [UserRole.ADMIN, UserRole.EMPLOYEE] },
   { name: 'Help & Support', href: '/dashboard/support', icon: '🆘', roles: [UserRole.RETAILER] },
 
-  { name: 'Queries', href: '/dashboard/queries', icon: '❓', roles: [UserRole.ADMIN] },
-  { name: 'Give Refund', href: '/dashboard/refunds', icon: '💸', roles: [UserRole.ADMIN] },
   { name: 'My Profile', href: '/dashboard/profile', icon: '👤', roles: [UserRole.ADMIN, UserRole.EMPLOYEE, UserRole.RETAILER] },
   { name: 'Change Password', href: '/dashboard/change-password', icon: '🔒', roles: [UserRole.RETAILER] },
 ];
@@ -157,6 +161,19 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             <span className="mr-3 text-lg">🚪</span>
             Logout
           </button>
+        </div>
+
+        {/* Akrix.ai Branding */}
+        <div className="p-4 border-t border-red-600">
+          <a
+            href="https://akrix-ai.netlify.app"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full flex items-center justify-center px-3 py-2 text-xs font-medium rounded-lg text-red-200 hover:bg-red-700 hover:text-white transition-all duration-200 bg-red-800/50"
+          >
+            <span className="mr-2 text-sm">🚀</span>
+            Developed by Akrix.ai
+          </a>
         </div>
       </div>
 

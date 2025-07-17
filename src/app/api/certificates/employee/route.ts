@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { employee_name, employee_id, department } = await request.json();
+    const { employee_name, employee_id, department, branch } = await request.json();
 
     if (!employee_name) {
       return NextResponse.json({
@@ -54,6 +54,7 @@ export async function POST(request: NextRequest) {
           employee_name: existingCert.employee_name,
           employee_id: existingCert.employee_id,
           department: existingCert.department,
+          branch: existingCert.branch,
           certificate_number: existingCert.certificate_number,
           issue_date: new Date(existingCert.issue_date).toLocaleDateString('en-GB'),
           company_name: 'Vignaharta Janseva',
@@ -64,52 +65,92 @@ export async function POST(request: NextRequest) {
 
     // Generate unique certificate number with VJS-EMP prefix
     const year = employeeCreationDate.getFullYear();
-    
-    // Generate unique sequence number
-    const { data: lastCert } = await supabaseAdmin
-      .from('employee_certificates')
-      .select('certificate_number')
-      .like('certificate_number', `VJS-EMP-${year}-%`)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
 
-    let sequenceNumber = 1;
-    if (lastCert) {
-      const lastSequence = parseInt(lastCert.certificate_number.split('-')[3]) || 0;
-      sequenceNumber = lastSequence + 1;
+    // Generate unique certificate number with retry mechanism
+    let certificateNumber = '';
+    let certificate = null;
+    let attempts = 0;
+    const maxAttempts = 10;
+
+    while (!certificate && attempts < maxAttempts) {
+      attempts++;
+
+      // Generate unique sequence number by getting all certificates for the year
+      const { data: existingCerts } = await supabaseAdmin
+        .from('employee_certificates')
+        .select('certificate_number')
+        .like('certificate_number', `VJS-EMP-${year}-%`)
+        .order('certificate_number', { ascending: false });
+
+      let sequenceNumber = 1;
+      if (existingCerts && existingCerts.length > 0) {
+        // Extract all sequence numbers and find the highest one
+        const sequenceNumbers = existingCerts
+          .map(cert => {
+            const parts = cert.certificate_number.split('-');
+            return parseInt(parts[3]) || 0;
+          })
+          .filter(num => !isNaN(num));
+
+        if (sequenceNumbers.length > 0) {
+          sequenceNumber = Math.max(...sequenceNumbers) + 1;
+        }
+      }
+
+      certificateNumber = `VJS-EMP-${year}-${String(sequenceNumber).padStart(5, '0')}`;
+
+      // Generate digital signature (unique hash)
+      const digitalSignature = `VJS-EMP-SIG-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+
+      // Create certificate record
+      const certificateData = {
+        user_id: session.user.id,
+        employee_name: employee_name,
+        employee_id: employee_id || null,
+        department: department || null,
+        branch: branch || null,
+        certificate_number: certificateNumber,
+        issue_date: issueDate, // Use employee creation date
+        company_name: 'Vignaharta Janseva',
+        digital_signature: digitalSignature,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      try {
+        const { data: insertedCert, error: createError } = await supabaseAdmin
+          .from('employee_certificates')
+          .insert(certificateData)
+          .select()
+          .single();
+
+        if (createError) {
+          // If it's a duplicate key error, try again with a different number
+          if (createError.code === '23505' && createError.message.includes('certificate_number')) {
+            console.log(`Certificate number ${certificateNumber} already exists, retrying... (attempt ${attempts})`);
+            // Add small delay to avoid rapid retries
+            await new Promise(resolve => setTimeout(resolve, 100));
+            continue;
+          } else {
+            throw createError;
+          }
+        }
+
+        certificate = insertedCert;
+      } catch (error) {
+        if (attempts >= maxAttempts) {
+          console.error('Error creating employee certificate after max attempts:', error);
+          return NextResponse.json({
+            error: 'Failed to create certificate after multiple attempts'
+          }, { status: 500 });
+        }
+      }
     }
 
-    const certificateNumber = `VJS-EMP-${year}-${String(sequenceNumber).padStart(5, '0')}`;
-
-    // Generate digital signature (unique hash)
-    const digitalSignature = `VJS-EMP-SIG-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
-
-    // Create certificate record
-    const certificateData = {
-      user_id: session.user.id,
-      employee_name: employee_name,
-      employee_id: employee_id || null,
-      department: department || null,
-      certificate_number: certificateNumber,
-      issue_date: issueDate, // Use employee creation date
-      company_name: 'Vignaharta Janseva',
-      digital_signature: digitalSignature,
-      is_active: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-
-    const { data: certificate, error: createError } = await supabaseAdmin
-      .from('employee_certificates')
-      .insert(certificateData)
-      .select()
-      .single();
-
-    if (createError) {
-      console.error('Error creating employee certificate:', createError);
-      return NextResponse.json({ 
-        error: 'Failed to create certificate' 
+    if (!certificate) {
+      return NextResponse.json({
+        error: 'Failed to generate unique certificate number'
       }, { status: 500 });
     }
 
@@ -120,6 +161,7 @@ export async function POST(request: NextRequest) {
         employee_name: certificate.employee_name,
         employee_id: certificate.employee_id,
         department: certificate.department,
+        branch: certificate.branch,
         certificate_number: certificate.certificate_number,
         issue_date: new Date(certificate.issue_date).toLocaleDateString('en-GB'),
         company_name: certificate.company_name,
@@ -166,6 +208,7 @@ export async function GET() {
         employee_name: certificate.employee_name,
         employee_id: certificate.employee_id,
         department: certificate.department,
+        branch: certificate.branch,
         certificate_number: certificate.certificate_number,
         issue_date: new Date(certificate.issue_date).toLocaleDateString('en-GB'),
         company_name: certificate.company_name,

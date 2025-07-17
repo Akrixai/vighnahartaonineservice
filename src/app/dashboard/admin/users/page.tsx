@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { UserRole } from '@/types';
 import { formatDateTime } from '@/lib/utils';
 import { showToast } from '@/lib/toast';
+import { supabaseClient } from '@/lib/supabase';
 
 export default function AdminUsersPage() {
   const { data: session } = useSession();
@@ -22,6 +23,7 @@ export default function AdminUsersPage() {
     role: string;
     employee_id?: string;
     department?: string;
+    branch?: string;
     address?: string;
     city?: string;
     state?: string;
@@ -36,6 +38,7 @@ export default function AdminUsersPage() {
     role: 'EMPLOYEE',
     employee_id: '',
     department: '',
+    branch: '',
     address: '',
     city: '',
     state: '',
@@ -64,6 +67,24 @@ export default function AdminUsersPage() {
 
   useEffect(() => {
     fetchUsers();
+
+    // Set up real-time subscription for users table
+    const channel = supabaseClient
+      .channel('users-changes')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'users' },
+        (payload) => {
+          console.log('Real-time user change:', payload);
+          // Refresh users list when any change occurs
+          fetchUsers();
+        }
+      )
+      .subscribe();
+
+    // Cleanup subscription on unmount
+    return () => {
+      supabaseClient.removeChannel(channel);
+    };
   }, [filter]);
 
   // Check admin access - moved before all hooks
@@ -120,6 +141,7 @@ export default function AdminUsersPage() {
       role: user.role,
       employee_id: user.employee_id || '',
       department: user.department || '',
+      branch: user.branch || '',
       address: user.address || '',
       city: user.city || '',
       state: user.state || '',
@@ -154,6 +176,7 @@ export default function AdminUsersPage() {
       role: 'EMPLOYEE',
       employee_id: '',
       department: '',
+      branch: '',
       address: '',
       city: '',
       state: '',
@@ -330,6 +353,18 @@ export default function AdminUsersPage() {
                         placeholder="Enter department"
                       />
                     </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-red-700 mb-2">Branch</label>
+                      <input
+                        type="text"
+                        name="branch"
+                        value={formData.branch}
+                        onChange={handleInputChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
+                        placeholder="Enter branch"
+                      />
+                    </div>
                   </>
                 )}
 
@@ -381,6 +416,18 @@ export default function AdminUsersPage() {
                         pattern="[0-9]{6}"
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
                         placeholder="Enter 6-digit PIN code"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-red-700 mb-2">Branch</label>
+                      <input
+                        type="text"
+                        name="branch"
+                        value={formData.branch}
+                        onChange={handleInputChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
+                        placeholder="Enter branch"
                       />
                     </div>
                   </>
@@ -460,16 +507,32 @@ export default function AdminUsersPage() {
                               <span className="ml-2 font-medium">{user.department}</span>
                             </div>
                           )}
+                          {user.branch && (
+                            <div>
+                              <span className="text-gray-500">Branch:</span>
+                              <span className="ml-2 font-medium">{user.branch}</span>
+                            </div>
+                          )}
                         </div>
                       )}
 
-                      {user.role === 'RETAILER' && user.address && (
-                        <div className="text-sm">
-                          <span className="text-gray-500">Address:</span>
-                          <span className="ml-2">{user.address}</span>
-                          {user.city && <span>, {user.city}</span>}
-                          {user.state && <span>, {user.state}</span>}
-                          {user.pincode && <span> - {user.pincode}</span>}
+                      {user.role === 'RETAILER' && (user.address || user.branch) && (
+                        <div className="text-sm space-y-1">
+                          {user.address && (
+                            <div>
+                              <span className="text-gray-500">Address:</span>
+                              <span className="ml-2">{user.address}</span>
+                              {user.city && <span>, {user.city}</span>}
+                              {user.state && <span>, {user.state}</span>}
+                              {user.pincode && <span> - {user.pincode}</span>}
+                            </div>
+                          )}
+                          {user.branch && (
+                            <div>
+                              <span className="text-gray-500">Branch:</span>
+                              <span className="ml-2 font-medium">{user.branch}</span>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>

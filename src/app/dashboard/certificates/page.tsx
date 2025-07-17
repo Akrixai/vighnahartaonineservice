@@ -12,6 +12,7 @@ import { showToast } from '@/lib/toast';
 interface Certificate {
   id: string;
   retailer_name: string;
+  branch?: string;
   certificate_number: string;
   issue_date: string;
   company_name: string;
@@ -67,6 +68,7 @@ export default function CertificatesPage() {
         setCertificate({
           id: session.user.id,
           retailer_name: session.user.name,
+          branch: 'Main Branch',
           certificate_number: certificateNumber,
           issue_date: currentDate.toLocaleDateString('en-GB'),
           company_name: 'Vignaharta Janseva'
@@ -153,6 +155,8 @@ export default function CertificatesPage() {
             </div>
           </div>
         </div>
+
+
 
         {/* Action Buttons */}
         <div className="flex justify-center space-x-4 mb-8 print:hidden print-hide">
@@ -247,6 +251,18 @@ export default function CertificatesPage() {
                             </div>
                           </div>
                         </div>
+
+                        {certificate.branch && (
+                          <div className="flex items-center">
+                            <Building className="w-5 h-5 text-red-600 mr-3" />
+                            <div>
+                              <div className="text-sm text-gray-600">Branch</div>
+                              <div className="text-lg font-semibold text-gray-900">
+                                {certificate.branch}
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       <div className="space-y-4">

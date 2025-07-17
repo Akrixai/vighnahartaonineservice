@@ -38,10 +38,12 @@ export async function GET(request: NextRequest) {
         dynamic_fields,
         required_documents,
         image_url,
+        external_url,
         created_at,
         created_by_user:users!schemes_created_by_fkey(name)
       `)
       .eq('is_active', true) // Only show active services
+      .is('external_url', null) // Only services without external URL (apply services)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
@@ -70,7 +72,8 @@ export async function GET(request: NextRequest) {
     let countQuery = supabaseAdmin
       .from('schemes')
       .select('*', { count: 'exact', head: true })
-      .eq('is_active', true);
+      .eq('is_active', true)
+      .is('external_url', null); // Only services without external URL
 
     if (category && category !== 'ALL') {
       countQuery = countQuery.eq('category', category);

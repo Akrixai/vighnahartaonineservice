@@ -1,95 +1,96 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import DashboardLayout from '@/components/dashboard/layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { UserRole } from '@/types';
-import { showToast } from '@/lib/toast';
+import { PageLoader } from '@/components/ui/logo-spinner';
+import { ExternalLink, Globe, Search } from 'lucide-react';
 
-const mockFreeServices = [
-  {
-    id: '1',
-    name: 'Aadhaar Card Information',
-    description: 'Get information about your Aadhaar card status and details.',
-    category: 'Information Services',
-    documents: ['Aadhaar Number'],
-    processingTime: 'Instant',
-    isActive: true
-  },
-  {
-    id: '2',
-    name: 'PAN Card Status',
-    description: 'Check the status of your PAN card application.',
-    category: 'Information Services',
-    documents: ['PAN Number or Application Number'],
-    processingTime: 'Instant',
-    isActive: true
-  },
-  {
-    id: '3',
-    name: 'Voter ID Information',
-    description: 'Get information about your voter ID and polling station.',
-    category: 'Information Services',
-    documents: ['Voter ID Number'],
-    processingTime: 'Instant',
-    isActive: true
-  },
-  {
-    id: '4',
-    name: 'Ration Card Status',
-    description: 'Check your ration card status and beneficiary details.',
-    category: 'Information Services',
-    documents: ['Ration Card Number'],
-    processingTime: 'Instant',
-    isActive: true
-  },
-  {
-    id: '5',
-    name: 'Scholarship Information',
-    description: 'Get information about available scholarships and eligibility.',
-    category: 'Educational Services',
-    documents: ['Student ID', 'Educational Certificates'],
-    processingTime: 'Instant',
-    isActive: true
-  },
-  {
-    id: '6',
-    name: 'Government Scheme Information',
-    description: 'Learn about various government schemes and their benefits.',
-    category: 'Information Services',
-    documents: ['None'],
-    processingTime: 'Instant',
-    isActive: true
-  }
-];
+interface FreeService {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  external_url: string;
+  is_active: boolean;
+}
 
 export default function FreeServicesPage() {
   const { data: session } = useSession();
-  const [services] = useState(mockFreeServices);
+  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [freeServices, setFreeServices] = useState<FreeService[]>([]);
+  const [servicesLoading, setServicesLoading] = useState(true);
+
+  useEffect(() => {
+    if (session?.user?.role === UserRole.RETAILER) {
+      fetchFreeServices();
+    }
+  }, [session]);
+
+  const fetchFreeServices = async () => {
+    try {
+      setServicesLoading(true);
+      const response = await fetch('/api/free-services');
+      if (response.ok) {
+        const data = await response.json();
+        setFreeServices(data.freeServices || []);
+      }
+    } catch (error) {
+      console.error('Error fetching free services:', error);
+    } finally {
+      setServicesLoading(false);
+    }
+  };
 
   if (!session) {
     return null; // Middleware will redirect
   }
 
-  const user = session.user;
-  const [selectedCategory, setSelectedCategory] = useState('All');
-  const [searchTerm, setSearchTerm] = useState('');
+  if (servicesLoading) {
+    return (
+      <DashboardLayout>
+        <PageLoader text="Loading free services..." />
+      </DashboardLayout>
+    );
+  }
 
-  const categories = ['All', ...Array.from(new Set(services.map(service => service.category)))];
+  const activeServices = freeServices?.filter(service => service.is_active) || [];
+  const categories = ['All', ...Array.from(new Set(activeServices.map(service => service.category)))];
 
-  const filteredServices = services.filter(service => {
+  const filteredServices = activeServices.filter(service => {
     const matchesCategory = selectedCategory === 'All' || service.category === selectedCategory;
     const matchesSearch = service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          service.description.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesCategory && matchesSearch && service.isActive;
+    return matchesCategory && matchesSearch;
   });
 
-  const handleAccessService = (service: any) => {
-    showToast.info(`Accessing ${service.name}`, {
-      description: 'This free service will be implemented with the information system.'
-    });
+  const handleAccessService = async (service: FreeService) => {
+    if (service.external_url) {
+      // Track usage before redirecting
+      try {
+        await fetch('/api/free-services/track-usage', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            service_id: service.id,
+            service_name: service.name,
+            external_url: service.external_url
+          }),
+        });
+      } catch (error) {
+        console.error('Error tracking service usage:', error);
+        // Continue with redirect even if tracking fails
+      }
+
+      // Open external URL in new tab
+      window.open(service.external_url, '_blank', 'noopener,noreferrer');
+    }
   };
 
   return (
@@ -113,13 +114,14 @@ export default function FreeServicesPage() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <input
                   type="text"
                   placeholder="Search free services..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                 />
               </div>
               <div className="flex gap-2 flex-wrap">
@@ -148,7 +150,10 @@ export default function FreeServicesPage() {
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div>
-                    <CardTitle className="text-lg">{service.name}</CardTitle>
+                    <CardTitle className="text-lg flex items-center">
+                      <Globe className="w-5 h-5 mr-2 text-green-600" />
+                      {service.name}
+                    </CardTitle>
                     <CardDescription className="text-sm text-gray-500">
                       {service.category}
                     </CardDescription>
@@ -164,31 +169,25 @@ export default function FreeServicesPage() {
                 <p className="text-sm text-gray-600 mb-4">
                   {service.description}
                 </p>
-                
+
                 <div className="space-y-3">
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-900 mb-1">Required Information:</h4>
-                    <ul className="text-xs text-gray-600 space-y-1">
-                      {service.documents.map((doc, index) => (
-                        <li key={index} className="flex items-center">
-                          <span className="w-1 h-1 bg-gray-400 rounded-full mr-2"></span>
-                          {doc}
-                        </li>
-                      ))}
-                    </ul>
+                  <div className="flex items-center text-xs text-gray-500">
+                    <ExternalLink className="w-4 h-4 mr-1" />
+                    <span>Redirects to external website</span>
                   </div>
-                  
+
                   <div className="flex items-center text-xs text-gray-500">
                     <span className="mr-1">⚡</span>
-                    Processing Time: {service.processingTime}
+                    Processing Time: Instant
                   </div>
                 </div>
 
                 <div className="mt-4 pt-4 border-t">
                   <Button
                     onClick={() => handleAccessService(service)}
-                    className="w-full bg-red-600 hover:bg-red-700 text-white"
+                    className="w-full bg-red-600 hover:bg-red-700 text-white flex items-center justify-center"
                   >
+                    <ExternalLink className="w-4 h-4 mr-2" />
                     Access Now
                   </Button>
                 </div>

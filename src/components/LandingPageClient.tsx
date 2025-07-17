@@ -47,20 +47,33 @@ export default function LandingPageClient() {
                 </div>
               </div>
             </div>
-            <nav className="hidden md:flex space-x-6">
-              <Link href="/about" className="text-white hover:text-red-200 px-4 py-2 rounded-lg text-sm font-medium transform hover:scale-105 transition-all duration-200 hover:bg-red-700/50 relative group">
-                About
-                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-white group-hover:w-full transition-all duration-300"></span>
-              </Link>
-              <Link href="/services" className="text-white hover:text-red-200 px-4 py-2 rounded-lg text-sm font-medium transform hover:scale-105 transition-all duration-200 hover:bg-red-700/50 relative group">
-                Services
-                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-white group-hover:w-full transition-all duration-300"></span>
-              </Link>
-              <Link href="/contact" className="text-white hover:text-red-200 px-4 py-2 rounded-lg text-sm font-medium transform hover:scale-105 transition-all duration-200 hover:bg-red-700/50 relative group">
-                Contact
-                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-white group-hover:w-full transition-all duration-300"></span>
-              </Link>
-            </nav>
+            <div className="flex items-center space-x-6">
+              <nav className="hidden md:flex space-x-6">
+                <Link href="/about" className="text-white hover:text-red-200 px-4 py-2 rounded-lg text-sm font-medium transform hover:scale-105 transition-all duration-200 hover:bg-red-700/50 relative group">
+                  About
+                  <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-white group-hover:w-full transition-all duration-300"></span>
+                </Link>
+                <Link href="/services" className="text-white hover:text-red-200 px-4 py-2 rounded-lg text-sm font-medium transform hover:scale-105 transition-all duration-200 hover:bg-red-700/50 relative group">
+                  Services
+                  <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-white group-hover:w-full transition-all duration-300"></span>
+                </Link>
+                <Link href="/contact" className="text-white hover:text-red-200 px-4 py-2 rounded-lg text-sm font-medium transform hover:scale-105 transition-all duration-200 hover:bg-red-700/50 relative group">
+                  Contact
+                  <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-white group-hover:w-full transition-all duration-300"></span>
+                </Link>
+              </nav>
+
+              {/* Akrix.ai Branding */}
+              <a
+                href="https://akrix-ai.netlify.app"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-white/80 hover:text-white text-xs font-medium px-2 py-1 rounded-md hover:bg-red-700/30 transition-all duration-200 flex items-center space-x-1"
+              >
+                <span className="text-xs">🚀</span>
+                <span>Developed by Akrix.ai</span>
+              </a>
+            </div>
           </div>
         </div>
       </header>

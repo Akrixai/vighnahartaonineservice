@@ -94,12 +94,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if pending registration already exists
+    const { data: existingPending } = await supabaseAdmin
+      .from('pending_registrations')
+      .select('id, status')
+      .eq('email', email)
+      .single();
+
+    if (existingPending) {
+      if (existingPending.status === 'pending') {
+        return NextResponse.json(
+          { error: 'Registration request already submitted and pending approval' },
+          { status: 400 }
+        );
+      } else if (existingPending.status === 'rejected') {
+        // Allow resubmission if previously rejected
+        await supabaseAdmin
+          .from('pending_registrations')
+          .delete()
+          .eq('email', email);
+      }
+    }
+
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    // Create user
-    const { data: user, error: userError } = await supabaseAdmin
-      .from('users')
+    // Create pending registration instead of direct user creation
+    const { data: pendingRegistration, error: pendingError } = await supabaseAdmin
+      .from('pending_registrations')
       .insert({
         name,
         email,
@@ -109,70 +131,62 @@ export async function POST(request: NextRequest) {
         state,
         pincode,
         password_hash: hashedPassword,
-        role
+        role,
+        status: 'pending'
       })
       .select()
       .single();
 
-    if (userError) {
-      console.error('Error creating user:', userError);
+    if (pendingError) {
+      console.error('Error creating pending registration:', pendingError);
       return NextResponse.json(
-        { error: 'Failed to create user' },
+        { error: 'Failed to submit registration request' },
         { status: 500 }
       );
     }
 
-    // Create wallet for the user
-    const { error: walletError } = await supabaseAdmin
-      .from('wallets')
-      .insert({
-        user_id: user.id,
-        balance: 0
-      })
-      .select()
-      .single();
+    // Wallet will be created after approval
 
-    if (walletError) {
-      console.error('Error creating wallet:', walletError);
-      // Don't fail user creation, just log the error
-    }
-
-    // Send welcome notifications
+    // Send approval request notifications
     try {
-      console.log(`📧 Sending welcome notifications to ${name} (${email})`);
+      console.log(`📧 Sending approval request notifications for ${name} (${email})`);
 
-      // Send welcome email
-      if (role === UserRole.RETAILER) {
-        await sendWelcomeRetailerEmail(name, email, password);
-      } else if (role === UserRole.EMPLOYEE) {
-        await sendWelcomeEmployeeEmail(name, email, password);
-      }
-
-      // Send WhatsApp notification if phone number is provided
-      if (phone) {
-        const welcomeMessage = `🎉 Welcome to विघ्नहर्ता जनसेवा!\n\nHello ${name}!\n\nYour ${role.toLowerCase()} account has been successfully created.\n\n📧 Email: ${email}\n🔐 Password: ${password}\n\n⚠️ Please change your password after first login.\n\n🚀 Login: http://localhost:3000/login?role=${role.toLowerCase()}\n\nThank you for joining us!`;
-
-        await sendWhatsAppMessage(phone, welcomeMessage);
-        console.log(`📱 WhatsApp welcome message sent to ${phone}`);
-      }
-
-      // Send admin notification
-      const adminMessage = `🆕 New ${role} Registration\n\n👤 Name: ${name}\n📧 Email: ${email}\n📱 Phone: ${phone || 'Not provided'}\n🏠 Address: ${address || 'Not provided'}\n🏙️ City: ${city || 'Not provided'}\n\n✅ Account created successfully!`;
+      // Send admin notification for approval
+      const adminMessage = `🆕 New ${role} Registration Request\n\n👤 Name: ${name}\n📧 Email: ${email}\n📱 Phone: ${phone || 'Not provided'}\n🏠 Address: ${address || 'Not provided'}\n🏙️ City: ${city || 'Not provided'}\n🏛️ State: ${state || 'Not provided'}\n📮 PIN: ${pincode || 'Not provided'}\n\n⏳ Status: Pending Approval\n\n🔍 Please review and approve/reject this registration request in the admin dashboard.`;
       await sendWhatsAppMessage('9764664021', adminMessage);
 
-      console.log('✅ Welcome notifications sent successfully');
+      // Get all employees to notify them as well
+      const { data: employees } = await supabaseAdmin
+        .from('users')
+        .select('phone')
+        .eq('role', 'EMPLOYEE')
+        .eq('is_active', true);
+
+      if (employees && employees.length > 0) {
+        for (const employee of employees) {
+          if (employee.phone) {
+            const employeeMessage = `🆕 New ${role} Registration Request\n\n👤 Name: ${name}\n📧 Email: ${email}\n📱 Phone: ${phone || 'Not provided'}\n🏙️ City: ${city || 'Not provided'}\n\n⏳ Pending admin approval\n\n📋 Please check admin dashboard for details.`;
+            await sendWhatsAppMessage(employee.phone, employeeMessage);
+          }
+        }
+      }
+
+      console.log('✅ Approval request notifications sent successfully');
     } catch (notificationError) {
-      console.error('❌ Error sending welcome notifications:', notificationError);
+      console.error('❌ Error sending approval request notifications:', notificationError);
       // Don't fail registration if notifications fail
     }
 
-    // Remove password from response
-    const { password_hash, ...userWithoutPassword } = user;
-
     return NextResponse.json({
       success: true,
-      message: 'User registered successfully',
-      user: userWithoutPassword
+      message: 'Registration request submitted successfully. Please wait for admin approval.',
+      registration: {
+        id: pendingRegistration.id,
+        name: pendingRegistration.name,
+        email: pendingRegistration.email,
+        status: pendingRegistration.status,
+        created_at: pendingRegistration.created_at
+      }
     });
 
   } catch (error) {

@@ -51,6 +51,7 @@ model User {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   createdBy   String?  // For admin-created users
+  branch      String?  // Branch for employees and retailers
   
   // Relations
   wallet      Wallet?

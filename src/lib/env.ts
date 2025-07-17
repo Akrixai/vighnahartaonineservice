@@ -9,23 +9,12 @@ export const env = {
   NEXTAUTH_URL: process.env.NEXTAUTH_URL || 'http://localhost:3000',
   NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET || '',
   
-  // Database Configuration
-  DATABASE_URL: process.env.DATABASE_URL || '',
-  DIRECT_URL: process.env.DIRECT_URL || '',
-  
   // JWT Configuration
   JWT_SECRET: process.env.JWT_SECRET || '',
-  
-  // File Upload Configuration
-  UPLOAD_DIR: process.env.UPLOAD_DIR || './uploads',
-  MAX_FILE_SIZE: parseInt(process.env.MAX_FILE_SIZE || '5242880'),
-  
+
   // Payment Configuration
   RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID || '',
   RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET || '',
-  
-  // Backend Configuration
-  BACKEND_URL: process.env.BACKEND_URL || 'http://localhost:3001',
 };
 
 // Validation function
@@ -53,7 +42,6 @@ export function validateEnv() {
 // Server-only environment variables
 export const serverEnv = {
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
-  DATABASE_URL: process.env.DATABASE_URL || '',
   JWT_SECRET: process.env.JWT_SECRET || '',
   RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET || '',
 };

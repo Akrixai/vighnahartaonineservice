@@ -104,12 +104,12 @@ export default function RegisterPage() {
       const data = await response.json();
 
       if (response.ok) {
-        showToast.success('Registration successful!', {
-          description: 'You can now login and start providing government services.'
+        showToast.success('Registration request submitted!', {
+          description: 'Your registration is pending admin approval. You will be notified once approved.'
         });
         setTimeout(() => {
-          window.location.href = '/login?role=retailer';
-        }, 2000);
+          window.location.href = '/';
+        }, 3000);
       } else {
         showToast.error('Registration failed', {
           description: data.error || 'Please try again.'
@@ -136,7 +136,20 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-red-50 via-orange-50 to-red-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-red-50 via-orange-50 to-red-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 relative">
+      {/* Akrix.ai Branding - Top Right Corner */}
+      <div className="absolute top-4 right-4 z-10">
+        <a
+          href="https://akrix-ai.netlify.app"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-red-600/80 hover:text-red-600 text-xs font-medium px-3 py-2 rounded-lg hover:bg-white/50 transition-all duration-200 flex items-center space-x-1 backdrop-blur-sm"
+        >
+          <span className="text-xs">🚀</span>
+          <span>Developed by Akrix.ai</span>
+        </a>
+      </div>
+
       <div className="max-w-2xl w-full space-y-8">
         {/* Header */}
         <div className="text-center animate-fade-in">

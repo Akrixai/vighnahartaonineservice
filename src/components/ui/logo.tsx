@@ -17,11 +17,11 @@ const Logo: React.FC<LogoProps> = ({
   animated = false
 }) => {
   const sizeClasses = {
-    sm: 'w-12 h-12',
-    md: 'w-16 h-16',
-    lg: 'w-20 h-20',
-    xl: 'w-24 h-24',
-    '2xl': 'w-32 h-32'
+    sm: 'w-10 h-8',
+    md: 'w-12 h-10',
+    lg: 'w-16 h-12',
+    xl: 'w-20 h-16',
+    '2xl': 'w-24 h-20'
   };
 
   const textSizeClasses = {
@@ -34,35 +34,25 @@ const Logo: React.FC<LogoProps> = ({
 
   return (
     <div className={`flex items-center space-x-3 ${className}`}>
-      {/* Logo with rounded square styling and shadows */}
-      <div className="flex-shrink-0 relative">
-        {/* Background for better integration */}
-        <div className={`absolute inset-0 bg-white/15 backdrop-blur-sm rounded-xl border border-white/30 shadow-lg ${animated ? 'animate-pulse' : ''}`}></div>
-        <div className="relative p-2">
-          <Image
-            src="/vignaharta.jpg"
-            alt="विघ्नहर्ता जनसेवा Logo"
-            width={size === 'sm' ? 48 : size === 'md' ? 64 : size === 'lg' ? 80 : size === 'xl' ? 96 : 128}
-            height={size === 'sm' ? 48 : size === 'md' ? 64 : size === 'lg' ? 80 : size === 'xl' ? 96 : 128}
-            className={`${sizeClasses[size]} object-cover rounded-lg shadow-2xl ring-2 ring-white/40 ${animated ? 'animate-bounce' : 'hover:scale-105 transition-transform duration-300'} filter drop-shadow-lg`}
-            priority
-          />
-        </div>
+      {/* Logo with simple rectangular styling */}
+      <div className="flex-shrink-0">
+        <Image
+          src="/vignaharta.jpg"
+          alt="विघ्नहर्ता जनसेवा Logo"
+          width={size === 'sm' ? 40 : size === 'md' ? 48 : size === 'lg' ? 64 : size === 'xl' ? 80 : 96}
+          height={size === 'sm' ? 32 : size === 'md' ? 40 : size === 'lg' ? 48 : size === 'xl' ? 64 : 80}
+          className={`${sizeClasses[size]} object-cover rounded-lg ${animated ? 'animate-pulse' : 'hover:scale-105 transition-transform duration-300'}`}
+          priority
+        />
       </div>
 
-      {/* Marathi Text with enhanced shadows */}
+      {/* Marathi Text without shadows */}
       {showText && (
         <div className="flex flex-col">
-          <span className={`font-bold text-white ${textSizeClasses[size]} logo-marathi`}
-                style={{
-                  textShadow: '2px 2px 4px rgba(0,0,0,0.8), 0px 0px 8px rgba(0,0,0,0.5)'
-                }}>
+          <span className={`font-bold text-white ${textSizeClasses[size]} logo-marathi`}>
             विघ्नहर्ता
           </span>
-          <span className={`text-red-100 ${size === 'sm' ? 'text-sm' : size === 'md' ? 'text-base' : size === 'lg' ? 'text-lg' : size === 'xl' ? 'text-xl' : 'text-2xl'} logo-marathi font-medium`}
-                style={{
-                  textShadow: '1px 1px 3px rgba(0,0,0,0.7), 0px 0px 6px rgba(0,0,0,0.4)'
-                }}>
+          <span className={`text-red-100 ${size === 'sm' ? 'text-sm' : size === 'md' ? 'text-base' : size === 'lg' ? 'text-lg' : size === 'xl' ? 'text-xl' : 'text-2xl'} logo-marathi font-medium`}>
             जनसेवा
           </span>
         </div>

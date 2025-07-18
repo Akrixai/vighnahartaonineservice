@@ -1,12 +1,6 @@
 {
   "version": 2,
   "name": "vignaharta-janseva",
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/next"
-    }
-  ],
   "routes": [
     {
       "src": "/api/(.*)",

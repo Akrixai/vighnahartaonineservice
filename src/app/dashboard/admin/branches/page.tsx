@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { UserRole } from '@/types';
+import { showToast } from '@/lib/toast';
 import { PageLoader } from '@/components/ui/logo-spinner';
 import { Building, Plus, Edit, Trash2, MapPin, Phone, Mail, User } from 'lucide-react';
 
@@ -121,26 +122,34 @@ export default function BranchManagementPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this branch?')) return;
+    showToast.confirm('Delete branch?', {
+      description: 'Are you sure you want to delete this branch? This action cannot be undone.',
+      onConfirm: async () => {
+        setLoading(true);
+        try {
+          const response = await fetch(`/api/admin/branches/${id}`, {
+            method: 'DELETE',
+          });
 
-    setLoading(true);
-    try {
-      const response = await fetch(`/api/admin/branches/${id}`, {
-        method: 'DELETE',
-      });
-
-      if (response.ok) {
-        fetchBranches();
-      } else {
-        const error = await response.json();
-        alert(error.error || 'Failed to delete branch');
+          if (response.ok) {
+            fetchBranches();
+            showToast.success('Branch deleted successfully');
+          } else {
+            const error = await response.json();
+            showToast.error('Failed to delete branch', {
+              description: error.error || 'Please try again'
+            });
+          }
+        } catch (error) {
+          console.error('Error deleting branch:', error);
+          showToast.error('Failed to delete branch', {
+            description: 'Please try again'
+          });
+        } finally {
+          setLoading(false);
+        }
       }
-    } catch (error) {
-      console.error('Error deleting branch:', error);
-      alert('Failed to delete branch');
-    } finally {
-      setLoading(false);
-    }
+    });
   };
 
   const toggleStatus = async (id: string, currentStatus: boolean) => {

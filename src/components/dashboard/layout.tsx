@@ -8,7 +8,8 @@ import Logo from '@/components/ui/logo';
 import AdvertisementCarousel from '@/components/AdvertisementCarousel';
 import ReceiptNotifications from '@/components/ReceiptNotifications';
 import PopupAdvertisement from '@/components/PopupAdvertisement';
-import WhatsAppNotificationTrigger from '@/components/WhatsAppNotificationTrigger';
+import NotificationBell from '@/components/NotificationBell';
+// Removed WhatsAppNotificationTrigger to fix chat initialization errors
 
 
 interface DashboardLayoutProps {
@@ -26,8 +27,8 @@ const menuItems: MenuItem[] = [
   { name: 'Dashboard', href: '/dashboard', icon: '📊', roles: [UserRole.ADMIN, UserRole.EMPLOYEE, UserRole.RETAILER] },
   { name: 'Wallet', href: '/dashboard/wallet', icon: '💰', roles: [UserRole.ADMIN, UserRole.RETAILER] },
   { name: 'Apply Services', href: '/dashboard/services', icon: '📝', roles: [UserRole.RETAILER] },
-  { name: 'Free Services', href: '/dashboard/free-services', icon: '🆓', roles: [UserRole.RETAILER] },
   { name: 'My Applications', href: '/dashboard/applications', icon: '📋', roles: [UserRole.RETAILER] },
+  { name: 'Commission Earnings', href: '/dashboard/commission', icon: '💸', roles: [UserRole.RETAILER] },
   { name: 'Service Receipts', href: '/dashboard/receipts', icon: '📄', roles: [UserRole.RETAILER] },
   { name: 'My Orders', href: '/dashboard/orders', icon: '📦', roles: [UserRole.RETAILER] },
   { name: 'Products', href: '/dashboard/products', icon: '🛍️', roles: [UserRole.RETAILER, UserRole.EMPLOYEE] },
@@ -51,6 +52,7 @@ const menuItems: MenuItem[] = [
   { name: 'Branch Management', href: '/dashboard/admin/branches', icon: '🏢', roles: [UserRole.ADMIN] },
   { name: 'User Management', href: '/dashboard/admin/users', icon: '👥', roles: [UserRole.ADMIN] },
   { name: 'Registration Requests', href: '/dashboard/admin/pending-registrations', icon: '👤', roles: [UserRole.ADMIN, UserRole.EMPLOYEE] },
+  { name: 'Database Cleanup', href: '/dashboard/admin/data-cleanup', icon: '🗄️', roles: [UserRole.ADMIN] },
   { name: 'Transactions', href: '/dashboard/transactions', icon: '💳', roles: [UserRole.ADMIN, UserRole.EMPLOYEE, UserRole.RETAILER] },
   { name: 'Wallet Approvals', href: '/dashboard/admin/wallet-approvals', icon: '💰', roles: [UserRole.ADMIN, UserRole.EMPLOYEE] },
   { name: 'Help & Support', href: '/dashboard/support', icon: '🆘', roles: [UserRole.RETAILER] },
@@ -104,9 +106,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
       {/* Sidebar */}
       <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-gradient-to-b from-red-800 to-red-900 shadow-xl transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out lg:translate-x-0 lg:relative lg:flex lg:flex-col`}>
-        <div className="flex items-center justify-center h-16 px-4 bg-gradient-to-r from-red-700 to-red-800 border-b border-red-600">
+        <div className="flex items-center justify-center h-20 px-4 bg-gradient-to-r from-red-700 to-red-800 border-b border-red-600">
           <Link href="/" className="text-white">
-            <Logo size="md" showText={true} animated={true} />
+            <Logo size="lg" showText={true} animated={true} />
           </Link>
         </div>
 
@@ -155,7 +157,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         {/* Logout */}
         <div className="p-4 border-t border-red-600">
           <button
-            onClick={() => signOut()}
+            onClick={() => signOut({ callbackUrl: '/' })}
             className="w-full flex items-center px-3 py-3 text-sm font-medium rounded-lg text-red-200 hover:bg-red-700 hover:text-white transition-all duration-200"
           >
             <span className="mr-3 text-lg">🚪</span>
@@ -206,6 +208,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </div>
 
             <div className="flex items-center space-x-4">
+              {/* Notification Bell for Admin/Employee */}
+              <NotificationBell
+                userRole={session?.user?.role}
+                userId={session?.user?.id}
+              />
+
               <span className="text-sm text-red-100">
                 Welcome, {userName}
               </span>
@@ -241,8 +249,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       {/* Receipt Notifications */}
       <ReceiptNotifications />
 
-      {/* WhatsApp Notification Trigger */}
-      <WhatsAppNotificationTrigger />
+      {/* WhatsApp Notification Trigger removed to fix chat initialization errors */}
     </div>
   );
 }

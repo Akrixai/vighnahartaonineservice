@@ -109,6 +109,7 @@ CREATE TABLE applications (
     scheme_id UUID NOT NULL REFERENCES schemes(id),
     form_data JSONB NOT NULL,
     documents TEXT[], -- Array of uploaded document URLs
+    dynamic_field_documents JSONB DEFAULT '{}', -- Store dynamic field documents with field mapping
     status application_status DEFAULT 'PENDING',
     amount DECIMAL(10,2),
     notes TEXT,
@@ -117,13 +118,13 @@ CREATE TABLE applications (
     approved_by UUID REFERENCES users(id),
     rejected_by UUID REFERENCES users(id),
     processed_at TIMESTAMP WITH TIME ZONE,
-    
+
     -- Customer details (filled by retailer for their customers)
     customer_name VARCHAR(255) NOT NULL,
     customer_phone VARCHAR(20),
     customer_email VARCHAR(255),
     customer_address TEXT,
-    
+
     CONSTRAINT valid_customer_phone CHECK (customer_phone ~ '^[0-9]{10}$' OR customer_phone IS NULL)
 );
 
@@ -224,8 +225,22 @@ CREATE TABLE advertisements (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     created_by UUID REFERENCES users(id),
-    
+
     CONSTRAINT valid_date_range CHECK (end_date IS NULL OR end_date >= start_date)
+);
+
+-- Login Advertisements table (specifically for login page)
+CREATE TABLE login_advertisements (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    image_url TEXT NOT NULL,
+    link_url TEXT,
+    display_order INTEGER DEFAULT 0,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    created_by UUID REFERENCES users(id)
 );
 
 -- Queries/Support tickets table
@@ -258,6 +273,8 @@ CREATE INDEX idx_schemes_is_active ON schemes(is_active);
 CREATE INDEX idx_products_is_active ON products(is_active);
 CREATE INDEX idx_training_videos_is_active ON training_videos(is_active);
 CREATE INDEX idx_advertisements_is_active ON advertisements(is_active);
+CREATE INDEX idx_login_advertisements_is_active ON login_advertisements(is_active);
+CREATE INDEX idx_login_advertisements_display_order ON login_advertisements(display_order);
 CREATE INDEX idx_queries_user_id ON queries(user_id);
 CREATE INDEX idx_queries_status ON queries(status);
 
@@ -279,6 +296,7 @@ CREATE TRIGGER update_applications_updated_at BEFORE UPDATE ON applications FOR 
 CREATE TRIGGER update_products_updated_at BEFORE UPDATE ON products FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_training_videos_updated_at BEFORE UPDATE ON training_videos FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_advertisements_updated_at BEFORE UPDATE ON advertisements FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_login_advertisements_updated_at BEFORE UPDATE ON login_advertisements FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_queries_updated_at BEFORE UPDATE ON queries FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Insert fresh admin user
@@ -349,6 +367,11 @@ INSERT INTO training_videos (title, description, video_url, category, level, dur
 INSERT INTO advertisements (title, description, image_url, position, link_url, created_by) VALUES
 ('Government Scheme Alert', 'New government schemes available for citizens', '/images/govt-scheme-ad.jpg', 'header', 'https://gov.in/schemes', (SELECT id FROM users WHERE email = 'admin@vignahartajanseva.gov.in')),
 ('Digital India Initiative', 'Join the Digital India movement', '/images/digital-india-ad.jpg', 'sidebar', 'https://digitalindia.gov.in', (SELECT id FROM users WHERE email = 'admin@vignahartajanseva.gov.in'));
+
+-- Insert sample login advertisements
+INSERT INTO login_advertisements (title, description, image_url, link_url, display_order, created_by) VALUES
+('Welcome to Digital Services', 'Experience seamless government services at your fingertips', '/vignaharta.jpg', '/dashboard', 1, (SELECT id FROM users WHERE email = 'admin@vignahartajanseva.gov.in')),
+('Secure & Fast Processing', 'Your documents are processed securely with quick turnaround time', '/vignaharta.jpg', '/about', 2, (SELECT id FROM users WHERE email = 'admin@vignahartajanseva.gov.in'));
 
 -- Grant necessary permissions (if using RLS)
 -- ALTER TABLE users ENABLE ROW LEVEL SECURITY;

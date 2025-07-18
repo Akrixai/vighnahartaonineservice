@@ -20,10 +20,10 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Get employee's creation date from users table
+    // Get employee's creation date and branch from users table
     const { data: employeeData, error: employeeError } = await supabaseAdmin
       .from('users')
-      .select('created_at')
+      .select('created_at, branch, department')
       .eq('id', session.user.id)
       .single();
 
@@ -107,8 +107,8 @@ export async function POST(request: NextRequest) {
         user_id: session.user.id,
         employee_name: employee_name,
         employee_id: employee_id || null,
-        department: department || null,
-        branch: branch || null,
+        department: department || employeeData?.department || null,
+        branch: branch || employeeData?.branch || null,
         certificate_number: certificateNumber,
         issue_date: issueDate, // Use employee creation date
         company_name: 'Vignaharta Janseva',

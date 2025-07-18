@@ -22,7 +22,7 @@ interface LoginAdvertisementsProps {
   className?: string;
 }
 
-export default function LoginAdvertisements({ className }: LoginAdvertisementsProps) {
+function LoginAdvertisements({ className }: LoginAdvertisementsProps) {
   const [advertisements, setAdvertisements] = useState<LoginAdvertisement[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -32,7 +32,10 @@ export default function LoginAdvertisements({ className }: LoginAdvertisementsPr
       const response = await fetch('/api/login-advertisements');
       if (response.ok) {
         const data = await response.json();
+        console.log('Fetched advertisements:', data.advertisements);
         setAdvertisements(data.advertisements || []);
+      } else {
+        console.error('Failed to fetch advertisements:', response.status, response.statusText);
       }
     } catch (error) {
       console.error('Error fetching login advertisements:', error);
@@ -232,3 +235,26 @@ export default function LoginAdvertisements({ className }: LoginAdvertisementsPr
     </div>
   );
 }
+
+// Safe wrapper component that handles errors gracefully
+export function SafeLoginAdvertisements({ className }: LoginAdvertisementsProps) {
+  return (
+    <React.Suspense fallback={
+      <div className={`${className}`}>
+        <Card className="h-full">
+          <CardContent className="flex items-center justify-center h-full p-8">
+            <div className="animate-pulse space-y-4 w-full">
+              <div className="h-48 bg-gray-200 rounded"></div>
+              <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+              <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    }>
+      <LoginAdvertisements className={className} />
+    </React.Suspense>
+  );
+}
+
+export default LoginAdvertisements;

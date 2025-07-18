@@ -176,16 +176,18 @@ export default function ProductsPage() {
                       <img
                         src={product.image_url}
                         alt={product.name}
-                        className="w-full h-32 object-cover rounded-lg mb-4"
+                        className="w-full h-48 object-cover rounded-lg mb-4 aspect-square"
                         onError={(e) => {
-                          (e.target as HTMLImageElement).src = '/placeholder-product.jpg';
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          target.nextElementSibling?.classList.remove('hidden');
                         }}
                       />
-                    ) : (
-                      <div className="w-full h-32 bg-gray-100 rounded-lg mb-4 flex items-center justify-center text-4xl">
-                        🛍️
-                      </div>
-                    )}
+                    ) : null}
+                    <div className={`w-full h-48 bg-gradient-to-br from-red-100 to-red-200 rounded-lg mb-4 flex flex-col items-center justify-center text-red-600 aspect-square ${product.image_url ? 'hidden' : ''}`}>
+                      <div className="text-6xl mb-2">🛍️</div>
+                      <div className="text-sm font-medium">{product.category || 'Product'}</div>
+                    </div>
                     <CardTitle className="text-lg">{product.name}</CardTitle>
                     <CardDescription className="text-sm text-gray-500">
                       {product.category}

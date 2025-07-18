@@ -48,6 +48,7 @@ export default function WalletPage() {
     transactionId?: string;
     walletBalance?: number;
   }>({ amount: 0 });
+  const [paymentStatusMessage, setPaymentStatusMessage] = useState<string>('');
 
   // Fetch wallet data with real-time updates
   useEffect(() => {
@@ -136,11 +137,12 @@ export default function WalletPage() {
         setAddMoneyAmount('');
         setShowAddMoney(false);
         setIsAddingMoney(false);
+        setPaymentStatusMessage('');
 
         // Set success data for modal
         setSuccessData({
           amount: amount,
-          transactionId: data?.transaction?.reference || data?.transaction?.id,
+          transactionId: data?.transaction?.reference || data?.transaction?.id || data?.payment?.id,
           walletBalance: data?.wallet?.balance
         });
         setShowPaymentSuccess(true);
@@ -161,6 +163,7 @@ export default function WalletPage() {
       (error) => {
         // Payment failed
         setIsAddingMoney(false);
+        setPaymentStatusMessage(error || 'Payment failed');
         console.error('Payment error:', error);
         showToast.error('Payment failed', {
           description: `${error}`
@@ -405,6 +408,15 @@ export default function WalletPage() {
                   </div>
                 </div>
               </div>
+
+              {paymentStatusMessage && (
+                <div className="mb-4 p-4 rounded-lg border border-yellow-200 bg-yellow-50">
+                  <p className="text-sm text-yellow-800 flex items-center">
+                    <span className="mr-2">⏳</span>
+                    {paymentStatusMessage}
+                  </p>
+                </div>
+              )}
 
               <form onSubmit={handleAddMoney} className="space-y-6">
                 <div className="space-y-2">

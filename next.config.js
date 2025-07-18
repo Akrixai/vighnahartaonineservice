@@ -14,9 +14,6 @@ const nextConfig = {
 
   // Netlify compatibility
   trailingSlash: false,
-
-  // Enable static file serving optimization
-  trailingSlash: false,
   
   // Image optimization settings
   images: {
@@ -25,7 +22,8 @@ const nextConfig = {
       'images.unsplash.com',
       'via.placeholder.com',
       'picsum.photos',
-      'localhost'
+      'localhost',
+      'nblvyqgtlsltuzbnhofz.supabase.co'
     ],
 
     // Alternative: use remotePatterns for more control
@@ -47,6 +45,12 @@ const nextConfig = {
         hostname: 'picsum.photos',
         port: '',
         pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'nblvyqgtlsltuzbnhofz.supabase.co',
+        port: '',
+        pathname: '/storage/v1/object/public/**',
       }
     ],
 

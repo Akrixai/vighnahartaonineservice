@@ -21,43 +21,76 @@ export async function GET(request: NextRequest) {
     const startDate = new Date();
     startDate.setDate(endDate.getDate() - days);
 
-    // Get revenue data from service applications
+    // Get revenue data from applications
     const { data: revenueData } = await supabaseAdmin
-      .from('service_applications')
-      .select('price, created_at, commission_rate')
+      .from('applications')
+      .select('amount, created_at, commission_amount, commission_paid')
       .gte('created_at', startDate.toISOString())
       .lte('created_at', endDate.toISOString())
-      .eq('payment_status', 'completed');
+      .in('status', ['APPROVED', 'COMPLETED']);
 
     // Calculate revenue metrics
-    const totalRevenue = revenueData?.reduce((sum, app) => sum + (app.price || 0), 0) || 0;
-    const todayRevenue = revenueData?.filter(app => 
+    const totalRevenue = revenueData?.reduce((sum, app) => sum + (app.amount || 0), 0) || 0;
+    const todayRevenue = revenueData?.filter(app =>
       new Date(app.created_at).toDateString() === new Date().toDateString()
-    ).reduce((sum, app) => sum + (app.price || 0), 0) || 0;
+    ).reduce((sum, app) => sum + (app.amount || 0), 0) || 0;
+
+    const thisMonthRevenue = revenueData?.filter(app => {
+      const appDate = new Date(app.created_at);
+      const now = new Date();
+      return appDate.getMonth() === now.getMonth() &&
+             appDate.getFullYear() === now.getFullYear();
+    }).reduce((sum, app) => sum + (app.amount || 0), 0) || 0;
+
+    // Get commission data from transactions
+    const { data: commissionData } = await supabaseAdmin
+      .from('transactions')
+      .select('amount, created_at')
+      .eq('type', 'COMMISSION')
+      .eq('status', 'COMPLETED')
+      .gte('created_at', startDate.toISOString())
+      .lte('created_at', endDate.toISOString());
+
+    const totalCommissionPaid = commissionData?.reduce((sum, transaction) =>
+      sum + parseFloat(transaction.amount.toString()), 0) || 0;
+
+    const todayCommission = commissionData?.filter(transaction =>
+      new Date(transaction.created_at).toDateString() === new Date().toDateString()
+    ).reduce((sum, transaction) => sum + parseFloat(transaction.amount.toString()), 0) || 0;
+
+    const thisMonthCommission = commissionData?.filter(transaction => {
+      const transactionDate = new Date(transaction.created_at);
+      const now = new Date();
+      return transactionDate.getMonth() === now.getMonth() &&
+             transactionDate.getFullYear() === now.getFullYear();
+    }).reduce((sum, transaction) => sum + parseFloat(transaction.amount.toString()), 0) || 0;
 
     // Calculate profit (revenue minus commission)
-    const totalProfit = revenueData?.reduce((sum, app) => {
-      const commission = (app.price || 0) * ((app.commission_rate || 0) / 100);
-      return sum + (app.price || 0) - commission;
-    }, 0) || 0;
+    const totalProfit = totalRevenue - totalCommissionPaid;
+    const todayProfit = todayRevenue - todayCommission;
+    const thisMonthProfit = thisMonthRevenue - thisMonthCommission;
 
-    const todayProfit = revenueData?.filter(app => 
-      new Date(app.created_at).toDateString() === new Date().toDateString()
-    ).reduce((sum, app) => {
-      const commission = (app.price || 0) * ((app.commission_rate || 0) / 100);
-      return sum + (app.price || 0) - commission;
-    }, 0) || 0;
-
-    // Group revenue by date
+    // Group revenue and commission by date
     const dailyRevenue: { [key: string]: number } = {};
+    const dailyCommission: { [key: string]: number } = {};
     const dailyProfit: { [key: string]: number } = {};
-    
+
     revenueData?.forEach(app => {
       const date = new Date(app.created_at).toISOString().split('T')[0];
-      dailyRevenue[date] = (dailyRevenue[date] || 0) + (app.price || 0);
-      
-      const commission = (app.price || 0) * ((app.commission_rate || 0) / 100);
-      dailyProfit[date] = (dailyProfit[date] || 0) + (app.price || 0) - commission;
+      dailyRevenue[date] = (dailyRevenue[date] || 0) + (app.amount || 0);
+    });
+
+    commissionData?.forEach(transaction => {
+      const date = new Date(transaction.created_at).toISOString().split('T')[0];
+      const amount = parseFloat(transaction.amount.toString());
+      dailyCommission[date] = (dailyCommission[date] || 0) + amount;
+    });
+
+    // Calculate daily profit
+    Object.keys(dailyRevenue).forEach(date => {
+      const revenue = dailyRevenue[date] || 0;
+      const commission = dailyCommission[date] || 0;
+      dailyProfit[date] = revenue - commission;
     });
 
     // Get user data
@@ -88,17 +121,26 @@ export async function GET(request: NextRequest) {
 
     // Get forms data
     const { data: formsData } = await supabaseAdmin
-      .from('service_applications')
+      .from('applications')
       .select('created_at, status')
       .gte('created_at', startDate.toISOString())
       .lte('created_at', endDate.toISOString());
 
     const totalForms = formsData?.length || 0;
-    const todayForms = formsData?.filter(form => 
+    const todayForms = formsData?.filter(form =>
       new Date(form.created_at).toDateString() === new Date().toDateString()
     ).length || 0;
 
-    const completedForms = formsData?.filter(form => form.status === 'completed').length || 0;
+    const thisMonthForms = formsData?.filter(form => {
+      const formDate = new Date(form.created_at);
+      const now = new Date();
+      return formDate.getMonth() === now.getMonth() &&
+             formDate.getFullYear() === now.getFullYear();
+    }).length || 0;
+
+    const completedForms = formsData?.filter(form =>
+      form.status === 'COMPLETED' || form.status === 'APPROVED'
+    ).length || 0;
     const completionRate = totalForms > 0 ? Math.round((completedForms / totalForms) * 100) : 0;
 
     // Group forms by date
@@ -164,14 +206,20 @@ export async function GET(request: NextRequest) {
       revenue: {
         total: totalRevenue,
         today: todayRevenue,
-        thisMonth: totalRevenue, // For the selected period
+        thisMonth: thisMonthRevenue,
         dailyRevenue: formatChartData(dailyRevenue)
       },
       profit: {
         total: totalProfit,
         today: todayProfit,
-        thisMonth: totalProfit, // For the selected period
+        thisMonth: thisMonthProfit,
         dailyProfit: formatChartData(dailyProfit)
+      },
+      commission: {
+        total: totalCommissionPaid,
+        today: todayCommission,
+        thisMonth: thisMonthCommission,
+        dailyCommission: formatChartData(dailyCommission)
       },
       users: {
         total: totalUsers,
@@ -184,7 +232,7 @@ export async function GET(request: NextRequest) {
       forms: {
         totalSubmitted: totalForms,
         todaySubmitted: todayForms,
-        thisMonthSubmitted: totalForms, // For the selected period
+        thisMonthSubmitted: thisMonthForms,
         completionRate,
         dailyForms: formatChartData(dailyForms)
       },

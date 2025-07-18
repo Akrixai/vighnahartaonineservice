@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
       .select(`
         *,
         user:users!applications_user_id_fkey(id, name, email, phone),
-        scheme:schemes!applications_scheme_id_fkey(id, name, price, category),
+        scheme:schemes!applications_scheme_id_fkey(id, name, price, category, dynamic_fields),
         approved_by_user:users!applications_approved_by_fkey(name),
         rejected_by_user:users!applications_rejected_by_fkey(name)
       `)

@@ -50,6 +50,74 @@ export function useRazorpay() {
     });
   }, []);
 
+  const checkPaymentStatus = useCallback(async (
+    paymentId: string,
+    orderId: string,
+    onSuccess?: (data: any) => void,
+    onError?: (error: string) => void
+  ) => {
+    try {
+      console.log('Checking payment status for:', paymentId);
+
+      // Check status multiple times with delays
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const statusResponse = await fetch(`/api/payment/status?payment_id=${paymentId}&order_id=${orderId}`);
+        const statusData = await statusResponse.json();
+
+        if (statusData.success) {
+          const { payment, transaction, wallet } = statusData.data;
+
+          // If payment is captured and transaction exists
+          if (payment?.status === 'captured' && transaction?.status === 'COMPLETED') {
+            console.log('Payment confirmed via status check');
+            setLoading(false);
+            onSuccess?.({
+              transaction,
+              wallet,
+              payment
+            });
+            return;
+          }
+
+          // If payment is captured but no transaction, try to sync
+          if (payment?.status === 'captured' && !transaction) {
+            console.log('Payment captured, syncing...');
+            const syncResponse = await fetch('/api/payment/status', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ payment_id: paymentId, order_id: orderId })
+            });
+
+            const syncData = await syncResponse.json();
+            if (syncData.success) {
+              setLoading(false);
+              onSuccess?.(syncData.data);
+              return;
+            }
+          }
+        }
+
+        // Wait before next attempt (exponential backoff)
+        if (attempt < 4) {
+          await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+        }
+      }
+
+      // If all attempts failed
+      const errorMessage = 'Payment status could not be confirmed. Please contact support.';
+      setError(errorMessage);
+      setLoading(false);
+      onError?.(errorMessage);
+
+    } catch (error) {
+      console.error('Error checking payment status:', error);
+      const errorMessage = 'Failed to verify payment status';
+      setError(errorMessage);
+      setLoading(false);
+      onError?.(errorMessage);
+    }
+  }, []);
+
   const initiatePayment = useCallback(async (
     amount: number,
     onSuccess?: (data: any) => void,
@@ -99,28 +167,28 @@ export function useRazorpay() {
         handler: async (response: any) => {
           console.log('Razorpay payment response:', response);
           try {
-            // Verify payment
+            // First, try to verify payment
             const verificationResponse = await verifyPayment({
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
               amount: orderAmount,
             });
-            
+
             console.log('Verification response:', verificationResponse);
 
             if (verificationResponse?.success) {
               setLoading(false);
               onSuccess?.(verificationResponse.data);
             } else {
-              throw new Error(verificationResponse?.error || 'Payment verification failed');
+              // If verification fails, try to check payment status
+              console.log('Verification failed, checking payment status...');
+              await checkPaymentStatus(response.razorpay_payment_id, response.razorpay_order_id, onSuccess, onError);
             }
           } catch (err) {
             console.error('Payment verification error:', err);
-            const errorMessage = err instanceof Error ? err.message : 'Payment verification failed';
-            setError(errorMessage);
-            setLoading(false);
-            onError?.(errorMessage);
+            // Try to check payment status as fallback
+            await checkPaymentStatus(response.razorpay_payment_id, response.razorpay_order_id, onSuccess, onError);
           }
         },
         prefill: {

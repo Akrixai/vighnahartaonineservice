@@ -13,11 +13,14 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // For retailers, only show free services without external URLs
+    // External URL services are only visible to admins and employees
     const { data: freeServices, error } = await supabaseAdmin
       .from('schemes')
       .select('id, name, description, category, external_url, is_active, created_at, updated_at')
       .eq('is_active', true)
-      .or('is_free.eq.true,external_url.not.is.null') // Free services OR services with external URL
+      .eq('is_free', true) // Only free services
+      .is('external_url', null) // Exclude services with external URLs
       .order('created_at', { ascending: false });
 
     if (error) {

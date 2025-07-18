@@ -152,9 +152,15 @@ export default function PendingRegistrationsPage() {
       return;
     }
 
-    if (!confirm('Are you sure you want to delete this registration? This action cannot be undone.')) {
-      return;
-    }
+    showToast.confirm('Delete registration?', {
+      description: 'Are you sure you want to delete this registration? This action cannot be undone.',
+      onConfirm: async () => {
+        await performDelete(registrationId);
+      }
+    });
+  };
+
+  const performDelete = async (registrationId: string) => {
 
     try {
       setProcessing(registrationId);

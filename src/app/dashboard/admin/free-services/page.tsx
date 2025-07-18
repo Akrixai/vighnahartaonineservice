@@ -156,23 +156,29 @@ export default function AdminFreeServicesPage() {
   const handleBulkDelete = async () => {
     if (selectedServices.length === 0) return;
 
-    if (!confirm(`Are you sure you want to delete ${selectedServices.length} selected services?`)) return;
+    showToast.confirm('Delete selected services?', {
+      description: `Are you sure you want to delete ${selectedServices.length} selected services? This action cannot be undone.`,
+      onConfirm: async () => {
+        setLoading(true);
+        try {
+          const promises = selectedServices.map(id =>
+            fetch(`/api/admin/free-services/${id}`, { method: 'DELETE' })
+          );
 
-    setLoading(true);
-    try {
-      const promises = selectedServices.map(id =>
-        fetch(`/api/admin/free-services/${id}`, { method: 'DELETE' })
-      );
-
-      await Promise.all(promises);
-      fetchFreeServices();
-      setSelectedServices([]);
-    } catch (error) {
-      console.error('Error bulk deleting services:', error);
-      alert('Failed to delete services');
-    } finally {
-      setLoading(false);
-    }
+          await Promise.all(promises);
+          fetchFreeServices();
+          setSelectedServices([]);
+          showToast.success(`${selectedServices.length} services deleted successfully`);
+        } catch (error) {
+          console.error('Error bulk deleting services:', error);
+          showToast.error('Failed to delete services', {
+            description: 'Please try again'
+          });
+        } finally {
+          setLoading(false);
+        }
+      }
+    });
   };
 
   const handleEdit = (service: FreeService) => {
@@ -225,26 +231,34 @@ export default function AdminFreeServicesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this free service?')) return;
+    showToast.confirm('Delete free service?', {
+      description: 'Are you sure you want to delete this free service? This action cannot be undone.',
+      onConfirm: async () => {
+        setLoading(true);
+        try {
+          const response = await fetch(`/api/admin/free-services/${id}`, {
+            method: 'DELETE',
+          });
 
-    setLoading(true);
-    try {
-      const response = await fetch(`/api/admin/free-services/${id}`, {
-        method: 'DELETE',
-      });
-
-      if (response.ok) {
-        fetchFreeServices();
-      } else {
-        const error = await response.json();
-        alert(error.error || 'Failed to delete free service');
+          if (response.ok) {
+            fetchFreeServices();
+            showToast.success('Free service deleted successfully');
+          } else {
+            const error = await response.json();
+            showToast.error('Failed to delete free service', {
+              description: error.error || 'Please try again'
+            });
+          }
+        } catch (error) {
+          console.error('Error deleting free service:', error);
+          showToast.error('Failed to delete free service', {
+            description: 'Please try again'
+          });
+        } finally {
+          setLoading(false);
+        }
       }
-    } catch (error) {
-      console.error('Error deleting free service:', error);
-      alert('Failed to delete free service');
-    } finally {
-      setLoading(false);
-    }
+    });
   };
 
   const toggleStatus = async (id: string, currentStatus: boolean) => {

@@ -6,9 +6,9 @@ import DashboardLayout from '@/components/dashboard/layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { UserRole } from '@/types';
+import { showToast } from '@/lib/toast';
 import { useRealTimeData } from '@/hooks/useRealTimeData';
 import { Users, Edit, Trash2, Mail, Phone, MapPin, Calendar, Wallet, Eye } from 'lucide-react';
-import { showToast } from '@/lib/toast';
 
 interface Retailer {
   id: string;
@@ -75,7 +75,9 @@ export default function RetailersManagementPage() {
       refresh();
     } catch (error) {
       console.error('Error updating retailer status:', error);
-      alert('Failed to update retailer status');
+      showToast.error('Failed to update retailer status', {
+        description: 'Please try again'
+      });
     } finally {
       setLoading(false);
     }

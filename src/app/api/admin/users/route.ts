@@ -31,7 +31,8 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = (page - 1) * limit;
 
-    let query = supabaseAdmin
+    // First get users
+    let userQuery = supabaseAdmin
       .from('users')
       .select(`
         id,
@@ -46,30 +47,40 @@ export async function GET(request: NextRequest) {
         pincode,
         employee_id,
         department,
-        created_at,
-        wallets (
-          id,
-          balance
-        )
+        branch,
+        created_at
       `)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
     if (role && role !== 'ALL') {
-      query = query.eq('role', role);
+      userQuery = userQuery.eq('role', role);
     }
 
-    const { data: users, error } = await query;
+    const { data: users, error } = await userQuery;
 
     if (error) {
       console.error('Error fetching users:', error);
       return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 });
     }
 
+    // Get wallets for these users
+    const userIds = users?.map(user => user.id) || [];
+    let wallets: any[] = [];
+
+    if (userIds.length > 0) {
+      const { data: walletsData } = await supabaseAdmin
+        .from('wallets')
+        .select('id, user_id, balance')
+        .in('user_id', userIds);
+
+      wallets = walletsData || [];
+    }
+
     // Transform users to include wallet info
     const transformedUsers = users?.map(user => ({
       ...user,
-      wallet: user.wallets?.[0] || null
+      wallet: wallets.find(wallet => wallet.user_id === user.id) || null
     })) || [];
 
     return NextResponse.json({ 
@@ -157,18 +168,10 @@ export async function POST(request: NextRequest) {
     const hashedPassword = await bcrypt.hash(password, 12);
 
     // Create user
-    const userData: {
-      name: string;
-      email: string;
-      phone: string;
-      role: string;
-      password_hash: string;
-      created_at: string;
-      updated_at: string;
-    } = {
+    const userData: any = {
       name,
       email,
-      phone,
+      phone: phone || null,
       password_hash: hashedPassword,
       role,
       created_by: session.user.id

@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { UserRole } from '@/types';
 import { MessageCircle, Clock, User, Calendar, Bell } from 'lucide-react';
+import { showToast } from '@/lib/toast';
 
 interface Chat {
   id: string;
@@ -89,7 +90,9 @@ export default function EmployeeChatsPage() {
       }
     } catch (error) {
       console.error('Error assigning chat:', error);
-      alert(error instanceof Error ? error.message : 'Failed to assign chat');
+      showToast.error('Failed to assign chat', {
+        description: error instanceof Error ? error.message : 'Please try again'
+      });
     } finally {
       setAssigningChat(null);
     }

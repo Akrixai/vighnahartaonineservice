@@ -1,7 +1,7 @@
 # 🏛️ Vignaharta Jan Seva - Government Services Portal
 
 <div align="center">
-  <img src="public/vignaharta.svg" alt="Vignaharta Jan Seva Logo" width="120" height="120">
+  <img src="public/vignaharta.jpg" alt="Vignaharta Jan Seva Logo" width="120" height="120">
 
   **विघ्नहर्ता जनसेवा - Empowering Citizens Through Digital Services**
 

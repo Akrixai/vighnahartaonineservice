@@ -27,6 +27,39 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if payment was already processed by webhook
+    const { data: existingTransaction } = await supabaseAdmin
+      .from('transactions')
+      .select('id, status, amount')
+      .eq('reference', razorpay_payment_id)
+      .single();
+
+    if (existingTransaction) {
+      console.log('Payment already processed by webhook:', razorpay_payment_id);
+
+      if (existingTransaction.status === 'COMPLETED') {
+        // Get updated wallet balance
+        const { data: wallet } = await supabaseAdmin
+          .from('wallets')
+          .select('balance')
+          .eq('user_id', session.user.id)
+          .single();
+
+        return NextResponse.json({
+          success: true,
+          message: 'Payment already processed',
+          data: {
+            transaction: existingTransaction,
+            wallet: { balance: wallet?.balance || 0 }
+          }
+        });
+      } else {
+        return NextResponse.json({
+          error: 'Payment processing failed'
+        }, { status: 400 });
+      }
+    }
+
     // Verify signature
     const body_string = razorpay_order_id + '|' + razorpay_payment_id;
     const expected_signature = crypto
@@ -64,8 +97,15 @@ export async function POST(request: NextRequest) {
         type: 'DEPOSIT',
         amount: amountInRupees,
         status: 'COMPLETED',
-        description: 'Wallet top-up via Razorpay',
-        reference: razorpay_payment_id
+        description: 'Wallet top-up via Razorpay (manual verification)',
+        reference: razorpay_payment_id,
+        metadata: {
+          razorpay_payment_id,
+          razorpay_order_id,
+          razorpay_signature,
+          processed_via: 'manual_verification',
+          processed_at: new Date().toISOString()
+        }
       })
       .select()
       .single();

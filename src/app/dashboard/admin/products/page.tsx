@@ -33,6 +33,8 @@ export default function AdminProductsPage() {
     stock_quantity: '',
     image_url: ''
   });
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -65,20 +67,58 @@ export default function AdminProductsPage() {
     );
   }
 
+  const uploadImage = async (file: File): Promise<string> => {
+    const uploadFormData = new FormData();
+    uploadFormData.append('file', file);
+    uploadFormData.append('folder', 'products');
+
+    const uploadResponse = await fetch('/api/upload', {
+      method: 'POST',
+      body: uploadFormData,
+    });
+
+    if (!uploadResponse.ok) {
+      throw new Error('Failed to upload image');
+    }
+
+    const uploadData = await uploadResponse.json();
+    return uploadData.url;
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedImage(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    const productData = {
-      ...formData,
-      price: parseFloat(formData.price),
-      stock_quantity: parseInt(formData.stock_quantity),
-      features: formData.features.split(',').map(f => f.trim()).filter(f => f)
-    };
 
     try {
+      let imageUrl = formData.image_url;
+
+      // Upload new image if selected
+      if (selectedImage) {
+        imageUrl = await uploadImage(selectedImage);
+      }
+
+      const productData = {
+        ...formData,
+        price: parseFloat(formData.price),
+        stock_quantity: parseInt(formData.stock_quantity),
+        features: formData.features.split(',').map(f => f.trim()).filter(f => f),
+        image_url: imageUrl
+      };
+
       const url = editingProduct ? `/api/admin/products/${editingProduct.id}` : '/api/admin/products';
       const method = editingProduct ? 'PUT' : 'POST';
-      
+
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
@@ -113,6 +153,8 @@ export default function AdminProductsPage() {
       stock_quantity: product.stock_quantity.toString(),
       image_url: product.image_url || ''
     });
+    setSelectedImage(null);
+    setImagePreview(product.image_url);
     setShowAddForm(true);
   };
 
@@ -175,6 +217,8 @@ export default function AdminProductsPage() {
       stock_quantity: '',
       image_url: ''
     });
+    setSelectedImage(null);
+    setImagePreview(null);
     setEditingProduct(null);
     setShowAddForm(false);
   };
@@ -298,15 +342,24 @@ export default function AdminProductsPage() {
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-red-700 mb-2">Image URL</label>
-                  <input
-                    type="url"
-                    name="image_url"
-                    value={formData.image_url}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
-                    placeholder="https://example.com/image.jpg"
-                  />
+                  <label className="block text-sm font-medium text-red-700 mb-2">Product Image</label>
+                  <div className="space-y-4">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 cursor-pointer"
+                    />
+                    {imagePreview && (
+                      <div className="relative w-full h-48 border rounded-lg overflow-hidden">
+                        <img
+                          src={imagePreview}
+                          alt="Preview"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="md:col-span-2 flex gap-4">

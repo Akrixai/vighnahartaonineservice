@@ -19,17 +19,20 @@ const validatePhone = (phone: string) => {
 // PUT - Update user (Admin only)
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session || session.user.role !== UserRole.ADMIN) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const resolvedParams = await params;
+    const userId = resolvedParams.id;
     const body = await request.json();
-    const userId = params.id;
+
+    console.log('Updating user:', userId, 'with data:', body);
 
     // Check if user exists
     const { data: existingUser, error: fetchError } = await supabaseAdmin
@@ -94,14 +97,7 @@ export async function PUT(
     }
 
     // Prepare update data
-    const updateData: {
-      name?: string;
-      email?: string;
-      phone?: string;
-      role?: string;
-      is_active?: boolean;
-      updated_at: string;
-    } = {
+    const updateData: any = {
       ...body,
       updated_at: new Date().toISOString()
     };
@@ -129,6 +125,7 @@ export async function PUT(
         pincode,
         employee_id,
         department,
+        branch,
         created_at,
         updated_at
       `)
@@ -154,16 +151,17 @@ export async function PUT(
 // DELETE - Delete user (Admin only)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session || session.user.role !== UserRole.ADMIN) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const userId = params.id;
+    const resolvedParams = await params;
+    const userId = resolvedParams.id;
 
     // Check if user exists
     const { data: existingUser, error: fetchError } = await supabaseAdmin

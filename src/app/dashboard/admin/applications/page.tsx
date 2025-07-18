@@ -17,6 +17,7 @@ export default function AdminApplicationsPage() {
   const [filter, setFilter] = useState('ALL');
   const [selectedApp, setSelectedApp] = useState<any>(null);
   const [showModal, setShowModal] = useState(false);
+  const [showDocumentModal, setShowDocumentModal] = useState(false);
   const [actionType, setActionType] = useState<'approve' | 'reject' | 'delete' | null>(null);
   const [notes, setNotes] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
@@ -93,32 +94,15 @@ export default function AdminApplicationsPage() {
   };
 
   const handleViewDocuments = (application: any) => {
-    if (application.documents && application.documents.length > 0) {
-      // Since application.documents contains URLs, not IDs, we'll open them directly
-      // If there's only one document, open it directly
-      if (application.documents.length === 1) {
-        window.open(application.documents[0], '_blank');
-      } else {
-        // If multiple documents, show a selection dialog using toast
-        const documentList = application.documents.map((doc: string, index: number) =>
-          `${index + 1}. Document ${index + 1}`
-        ).join('\n');
+    const hasRegularDocs = application.documents && application.documents.length > 0;
+    const hasDynamicDocs = application.dynamic_field_documents &&
+      Object.keys(application.dynamic_field_documents).length > 0;
 
-        showToast.prompt('Select document to view', {
-          description: `Multiple documents found:\n${documentList}\n\nEnter document number (1-${application.documents.length}):`,
-          placeholder: 'Enter document number...',
-          onSubmit: (choice: string) => {
-            const docIndex = parseInt(choice) - 1;
-            if (docIndex >= 0 && docIndex < application.documents.length) {
-              window.open(application.documents[docIndex], '_blank');
-            } else {
-              showToast.error('Invalid document number', {
-                description: `Please enter a number between 1 and ${application.documents.length}`
-              });
-            }
-          }
-        });
-      }
+    if (hasRegularDocs || hasDynamicDocs) {
+      setSelectedApp(application);
+      setShowDocumentModal(true);
+    } else {
+      showToast.error('No documents found for this application');
     }
   };
 
@@ -251,7 +235,14 @@ export default function AdminApplicationsPage() {
                         </div>
                         <div>
                           <span className="text-gray-500">Documents:</span>
-                          <span className="ml-2">{application.documents?.length || 0} files</span>
+                          <span className="ml-2">
+                            {(application.documents?.length || 0) +
+                             (application.dynamic_field_documents ?
+                               Object.keys(application.dynamic_field_documents).reduce((total, key) =>
+                                 total + (application.dynamic_field_documents[key]?.length || 0), 0
+                               ) : 0
+                             )} files
+                          </span>
                         </div>
                       </div>
 
@@ -282,7 +273,8 @@ export default function AdminApplicationsPage() {
                         </>
                       )}
                       
-                      {application.documents && application.documents.length > 0 && (
+                      {((application.documents && application.documents.length > 0) ||
+                        (application.dynamic_field_documents && Object.keys(application.dynamic_field_documents).length > 0)) && (
                         <Button
                           onClick={() => handleViewDocuments(application)}
                           className="bg-blue-600 hover:bg-blue-700 text-white"
@@ -316,8 +308,15 @@ export default function AdminApplicationsPage() {
               </h3>
               
               <p className="text-gray-600 mb-4">
-                Are you sure you want to {actionType} the application for "{selectedApp.scheme?.name}" 
-                by {selectedApp.customer_name}?
+                {actionType === 'delete' ? (
+                  <>
+                    <span className="text-red-600 font-semibold">⚠️ Warning:</span> Are you sure you want to permanently delete the application for "{selectedApp.scheme?.name}" by {selectedApp.customer_name}?
+                    <br />
+                    <span className="text-sm text-red-500 mt-2 block">This action cannot be undone and will remove all associated data.</span>
+                  </>
+                ) : (
+                  <>Are you sure you want to {actionType} the application for "{selectedApp.scheme?.name}" by {selectedApp.customer_name}?</>
+                )}
               </p>
 
               {actionType !== 'delete' && (
@@ -358,6 +357,178 @@ export default function AdminApplicationsPage() {
                 >
                   Cancel
                 </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Document Modal */}
+        {showDocumentModal && selectedApp && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold">
+                  Documents for {selectedApp.customer_name}
+                </h3>
+                <Button
+                  onClick={() => {
+                    setShowDocumentModal(false);
+                    setSelectedApp(null);
+                  }}
+                  variant="outline"
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  ✕
+                </Button>
+              </div>
+
+              <div className="space-y-4">
+                <p className="text-gray-600 mb-4">
+                  Application: {selectedApp.scheme?.name} •
+                  {(selectedApp.documents?.length || 0) +
+                   (selectedApp.dynamic_field_documents ?
+                     Object.keys(selectedApp.dynamic_field_documents).reduce((total, key) =>
+                       total + (selectedApp.dynamic_field_documents[key]?.length || 0), 0
+                     ) : 0
+                   )} documents
+                </p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Regular Documents */}
+                  {selectedApp.documents?.map((documentUrl: string, index: number) => (
+                    <div key={`regular-${index}`} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="font-medium text-gray-900">
+                          Document {index + 1}
+                        </h4>
+                        <span className="text-xs text-gray-500">
+                          {documentUrl.split('.').pop()?.toUpperCase() || 'FILE'}
+                        </span>
+                      </div>
+
+                      {/* Preview for images */}
+                      {documentUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) && (
+                        <div className="mb-3">
+                          <img
+                            src={documentUrl}
+                            alt={`Document ${index + 1}`}
+                            className="w-full h-32 object-cover rounded border"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                            }}
+                          />
+                        </div>
+                      )}
+
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => window.open(documentUrl, '_blank')}
+                          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm"
+                        >
+                          👁️ View
+                        </Button>
+                        <Button
+                          onClick={() => {
+                            const link = document.createElement('a');
+                            link.href = documentUrl;
+                            link.download = `document-${index + 1}`;
+                            link.click();
+                          }}
+                          variant="outline"
+                          className="flex-1 text-sm"
+                        >
+                          📥 Download
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Dynamic Field Documents */}
+                  {selectedApp.dynamic_field_documents && Object.entries(selectedApp.dynamic_field_documents).map(([fieldId, fileUrls]) =>
+                    fileUrls?.map((documentUrl: string, index: number) => {
+                      // Find the field label from scheme dynamic_fields
+                      const fieldLabel = selectedApp.scheme?.dynamic_fields?.find((field: any) => field.id === fieldId)?.label || fieldId;
+
+                      return (
+                        <div key={`dynamic-${fieldId}-${index}`} className="border rounded-lg p-4 hover:shadow-md transition-shadow bg-blue-50">
+                          <div className="flex items-center justify-between mb-3">
+                            <h4 className="font-medium text-gray-900">
+                              {fieldLabel} (Dynamic Field)
+                            </h4>
+                            <span className="text-xs text-gray-500">
+                              {documentUrl.split('.').pop()?.toUpperCase() || 'FILE'}
+                            </span>
+                          </div>
+
+                          {/* Preview for images */}
+                          {documentUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) && (
+                            <div className="mb-3">
+                              <img
+                                src={documentUrl}
+                                alt={`Dynamic Field ${fieldLabel}`}
+                                className="w-full h-32 object-cover rounded border"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.style.display = 'none';
+                                }}
+                              />
+                            </div>
+                          )}
+
+                          <div className="flex gap-2">
+                            <Button
+                              onClick={() => window.open(documentUrl, '_blank')}
+                              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm"
+                            >
+                              👁️ View
+                            </Button>
+                            <Button
+                              onClick={() => {
+                                const link = document.createElement('a');
+                                link.href = documentUrl;
+                                link.download = `${fieldLabel}-${index + 1}`;
+                                link.click();
+                              }}
+                              variant="outline"
+                              className="flex-1 text-sm"
+                            >
+                              📥 Download
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+
+                  {/* Show missing dynamic fields */}
+                  {selectedApp.scheme?.dynamic_fields?.filter((field: any) =>
+                    ['file', 'image', 'pdf'].includes(field.type) &&
+                    (!selectedApp.dynamic_field_documents || !selectedApp.dynamic_field_documents[field.id])
+                  ).map((field: any) => (
+                    <div key={`missing-${field.id}`} className="border rounded-lg p-4 bg-red-50 border-red-200">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="font-medium text-red-800">
+                          {field.label} (Missing Document)
+                        </h4>
+                        <span className="text-xs text-red-600 bg-red-100 px-2 py-1 rounded">
+                          {field.required ? 'REQUIRED' : 'OPTIONAL'}
+                        </span>
+                      </div>
+                      <p className="text-sm text-red-600">
+                        This {field.type} field was not uploaded by the retailer.
+                      </p>
+                    </div>
+                  ))}
+                </div>
+
+                {(!selectedApp.documents || selectedApp.documents.length === 0) &&
+                 (!selectedApp.dynamic_field_documents || Object.keys(selectedApp.dynamic_field_documents).length === 0) && (
+                  <div className="text-center py-8 text-gray-500">
+                    <div className="text-4xl mb-2">📄</div>
+                    <p>No documents found for this application</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>

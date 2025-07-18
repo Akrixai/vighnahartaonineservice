@@ -30,27 +30,24 @@ export async function PUT(
     // Check if application exists
     const { data: existingApp, error: fetchError } = await supabaseAdmin
       .from('applications')
-      .select('id, status, user_id, scheme_id, amount')
+      .select('*')
       .eq('id', applicationId)
       .single();
 
     if (fetchError || !existingApp) {
+      console.error('Application fetch error:', fetchError);
       return NextResponse.json({ error: 'Application not found' }, { status: 404 });
     }
 
     // Prepare update data
-    const updateData: {
-      updated_at: string;
-      status?: string;
-      admin_notes?: string;
-    } = {
+    const updateData: any = {
       updated_at: new Date().toISOString()
     };
 
     if (status) {
       updateData.status = status;
       updateData.processed_at = new Date().toISOString();
-      
+
       if (status === 'APPROVED') {
         updateData.approved_by = session.user.id;
       } else if (status === 'REJECTED') {
@@ -78,17 +75,75 @@ export async function PUT(
       return NextResponse.json({ error: 'Failed to update application' }, { status: 500 });
     }
 
-    // If approved, handle wallet transactions and commission
-    if (status === 'APPROVED' && existingApp.status === 'PENDING') {
+    // If approved, handle commission payment
+    if (status === 'APPROVED' && existingApp.status === 'PENDING' && !existingApp.commission_paid) {
       try {
-        // TODO: Implement wallet deduction and commission calculation
-        // This would involve:
-        // 1. Deducting amount from retailer's wallet
-        // 2. Adding commission to retailer's wallet
-        // 3. Creating transaction records
-        console.log('Application approved - implement wallet transactions');
+        // Get scheme details
+        const { data: scheme } = await supabaseAdmin
+          .from('schemes')
+          .select('commission_rate')
+          .eq('id', existingApp.scheme_id)
+          .single();
+
+        // Get user wallet
+        const { data: wallet } = await supabaseAdmin
+          .from('wallets')
+          .select('id, balance')
+          .eq('user_id', existingApp.user_id)
+          .single();
+
+        const commissionRate = scheme?.commission_rate || 0;
+        const applicationAmount = parseFloat(existingApp.amount?.toString() || '0');
+        const commissionAmount = (applicationAmount * commissionRate) / 100;
+
+        if (commissionAmount > 0 && wallet) {
+          const currentBalance = parseFloat(wallet.balance.toString());
+          const newBalance = currentBalance + commissionAmount;
+
+          // Update wallet balance
+          await supabaseAdmin
+            .from('wallets')
+            .update({
+              balance: newBalance,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', wallet.id);
+
+          // Create commission transaction
+          await supabaseAdmin
+            .from('transactions')
+            .insert({
+              user_id: existingApp.user_id,
+              wallet_id: wallet.id,
+              type: 'COMMISSION',
+              amount: commissionAmount,
+              status: 'COMPLETED',
+              description: `Commission for approved application #${applicationId}`,
+              reference: `COMM_${applicationId}`,
+              metadata: {
+                application_id: applicationId,
+                commission_rate: commissionRate,
+                original_amount: applicationAmount
+              },
+              processed_by: session.user.id,
+              processed_at: new Date().toISOString()
+            });
+
+          // Mark commission as paid in application
+          await supabaseAdmin
+            .from('applications')
+            .update({
+              commission_rate: commissionRate,
+              commission_amount: commissionAmount,
+              commission_paid: true,
+              commission_paid_at: new Date().toISOString()
+            })
+            .eq('id', applicationId);
+
+          console.log(`Commission paid: ₹${commissionAmount} to user ${existingApp.user_id}`);
+        }
       } catch (walletError) {
-        console.error('Error processing wallet transactions:', walletError);
+        console.error('Error processing commission payment:', walletError);
         // Don't fail the approval, but log the error
       }
     }
@@ -131,12 +186,9 @@ export async function DELETE(
       return NextResponse.json({ error: 'Application not found' }, { status: 404 });
     }
 
-    // Prevent deletion of approved applications (optional business rule)
-    if (existingApp.status === 'APPROVED' || existingApp.status === 'COMPLETED') {
-      return NextResponse.json({ 
-        error: 'Cannot delete approved or completed applications' 
-      }, { status: 400 });
-    }
+    // Admin can delete any application - removed restriction
+    // Log the deletion for audit purposes
+    console.log(`Admin ${session.user.id} deleting application ${applicationId} with status ${existingApp.status}`);
 
     const { error } = await supabaseAdmin
       .from('applications')

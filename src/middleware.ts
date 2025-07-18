@@ -88,7 +88,7 @@ export default withAuth(
     }
 
     // Allow access to public routes
-    const publicRoutes = ['/', '/login', '/register', '/about', '/services', '/contact', '/privacy', '/terms'];
+    const publicRoutes = ['/', '/login', '/register', '/about', '/services', '/contact', '/privacy', '/terms', '/refund-policy'];
     if (publicRoutes.includes(pathname)) {
       return response;
     }
@@ -145,7 +145,6 @@ export default withAuth(
 
       // Customer and Retailer routes
       if (pathname.startsWith('/dashboard/services') ||
-          pathname.startsWith('/dashboard/free-services') ||
           pathname.startsWith('/dashboard/products') ||
           pathname.startsWith('/dashboard/training') ||
           pathname.startsWith('/dashboard/support')) {
@@ -170,7 +169,7 @@ export default withAuth(
         const pathname = req.nextUrl.pathname;
         
         // Allow public routes
-        const publicRoutes = ['/', '/login', '/register', '/about', '/services', '/contact', '/privacy', '/terms'];
+        const publicRoutes = ['/', '/login', '/register', '/about', '/services', '/contact', '/privacy', '/terms', '/refund-policy'];
         if (publicRoutes.includes(pathname)) {
           return true;
         }

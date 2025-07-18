@@ -81,13 +81,38 @@ export default function ServiceApplicationForm({ service, isOpen, onClose, onSuc
   const handleDynamicFileChange = async (e: React.ChangeEvent<HTMLInputElement>, fieldId: string, fieldType: string) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      // Here you would typically upload the file and get a URL back
-      // For now, we'll just create a mock URL
-      const mockUrl = URL.createObjectURL(file);
-      setUploadedFiles(prev => ({
-        ...prev,
-        [fieldId]: [mockUrl]
-      }));
+
+      try {
+        // Upload the file to get actual URL
+        const formDataForUpload = new FormData();
+        formDataForUpload.append('file', file);
+        formDataForUpload.append('folder', 'applications');
+
+        const uploadResponse = await fetch('/api/upload', {
+          method: 'POST',
+          body: formDataForUpload,
+        });
+
+        if (uploadResponse.ok) {
+          const uploadResult = await uploadResponse.json();
+          if (uploadResult.success && uploadResult.url) {
+            setUploadedFiles(prev => ({
+              ...prev,
+              [fieldId]: [uploadResult.url]
+            }));
+
+            toast.success(`${file.name} uploaded successfully!`);
+          } else {
+            toast.error(`Failed to upload ${file.name}`);
+          }
+        } else {
+          const errorData = await uploadResponse.json();
+          toast.error(`Upload failed: ${errorData.error}`);
+        }
+      } catch (error) {
+        console.error('Upload error:', error);
+        toast.error('Failed to upload file');
+      }
     }
   };
 
@@ -143,6 +168,8 @@ export default function ServiceApplicationForm({ service, isOpen, onClose, onSuc
         }
       }
 
+      // Dynamic field documents are handled separately in dynamic_field_documents
+
       const applicationData = {
         scheme_id: service.id,
         customer_name: formData.customer_name,
@@ -155,6 +182,7 @@ export default function ServiceApplicationForm({ service, isOpen, onClose, onSuc
           service_specific_data: formData.service_specific_data
         },
         documents: documentUrls,
+        dynamic_field_documents: uploadedFiles,
         amount: service.is_free ? 0 : service.price
       };
 

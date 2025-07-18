@@ -4,6 +4,7 @@ import "./globals.css";
 import NextAuthSessionProvider from "@/components/providers/session-provider";
 import { Toaster } from "react-hot-toast";
 import WhatsAppNotificationProvider from "@/components/WhatsAppNotificationProvider";
+import NotificationManager from "@/components/NotificationManager";
 
 import ErrorBoundary from "@/components/ErrorBoundary";
 
@@ -79,36 +80,42 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <link rel="preload" href="/vignaharta.jpg" as="image" />
-        <link rel="preload" href="/vignaharta.svg" as="image" />
+        <link rel="preload" href="/vignaharta.png" as="image" />
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" href="/vignaharta.png" type="image/png" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <meta name="theme-color" content="#dc2626" />
       </head>
       <body className={`${inter.className} ${notoSansDevanagari.variable} antialiased`}>
         <NextAuthSessionProvider>
           <WhatsAppNotificationProvider>
-            <ErrorBoundary>
-              {children}
-            <Toaster
-              position="top-right"
-              toastOptions={{
-                duration: 4000,
-                style: {
-                  background: '#363636',
-                  color: '#fff',
-                },
-                success: {
-                  duration: 3000,
+            <NotificationManager>
+              <ErrorBoundary>
+                {children}
+              <Toaster
+                position="top-right"
+                toastOptions={{
+                  duration: 4000,
                   style: {
-                    background: '#10b981',
+                    background: '#363636',
+                    color: '#fff',
                   },
-                },
-                error: {
-                  duration: 5000,
-                  style: {
-                    background: '#ef4444',
+                  success: {
+                    duration: 3000,
+                    style: {
+                      background: '#10b981',
+                    },
                   },
-                },
-              }}
-            />
-          </ErrorBoundary>
+                  error: {
+                    duration: 5000,
+                    style: {
+                      background: '#ef4444',
+                    },
+                  },
+                }}
+              />
+            </ErrorBoundary>
+            </NotificationManager>
           </WhatsAppNotificationProvider>
         </NextAuthSessionProvider>
       </body>

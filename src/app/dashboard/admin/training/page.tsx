@@ -76,13 +76,13 @@ export default function AdminTrainingPage() {
       if (response.ok) {
         await fetchVideos();
         resetForm();
-        alert(editingVideo ? 'Video updated successfully!' : 'Video added successfully!');
+        showToast.success(editingVideo ? 'Video updated successfully!' : 'Video added successfully!');
       } else {
-        alert('Failed to save video');
+        showToast.error('Failed to save video');
       }
     } catch (error) {
       console.error('Error saving video:', error);
-      alert('Error saving video');
+      showToast.error('Error saving video');
     }
   };
 
@@ -142,7 +142,7 @@ export default function AdminTrainingPage() {
 
       if (response.ok) {
         await fetchVideos();
-        alert(`Video ${!currentStatus ? 'activated' : 'deactivated'} successfully!`);
+        showToast.success(`Video ${!currentStatus ? 'activated' : 'deactivated'} successfully!`);
       }
     } catch (error) {
       console.error('Error updating video status:', error);

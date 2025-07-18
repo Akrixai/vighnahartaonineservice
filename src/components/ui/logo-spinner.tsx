@@ -32,42 +32,51 @@ const LogoSpinner: React.FC<LogoSpinnerProps> = ({
 
   return (
     <div className={cn('flex flex-col items-center justify-center space-y-3', className)}>
-      {/* Animated Logo Container */}
+      {/* Paper Stack Animation */}
       <div className="relative">
-        {/* Outer spinning ring */}
-        <div className={cn(
-          'absolute inset-0 rounded-full border-4 border-red-200 border-t-red-600 animate-spin',
-          sizeClasses[size]
-        )}></div>
-        
-        {/* Inner pulsing ring */}
-        <div className={cn(
-          'absolute inset-1 rounded-full border-2 border-orange-200 border-b-orange-500 animate-spin',
-          sizeClasses[size]
-        )} style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
-        
-        {/* Logo in center */}
-        <div className={cn(
-          'flex items-center justify-center rounded-full bg-gradient-to-br from-red-600 to-red-700 text-white shadow-lg animate-pulse',
-          sizeClasses[size]
-        )}>
-          {/* Vignaharta Symbol */}
-          <div className={cn(
-            'font-bold text-white',
-            size === 'sm' ? 'text-xs' :
-            size === 'md' ? 'text-sm' :
-            size === 'lg' ? 'text-base' : 'text-lg'
-          )}>
-            V
+        <div className={cn('relative', sizeClasses[size])}>
+          {/* Stack of papers */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            {/* Paper 1 - Bottom */}
+            <div className="absolute w-full h-full bg-white border-2 border-gray-300 rounded-lg shadow-md transform rotate-3 animate-pulse"
+                 style={{ animationDelay: '0s', animationDuration: '2s' }}>
+              <div className="p-2 space-y-1">
+                <div className="h-1 bg-gray-200 rounded w-3/4"></div>
+                <div className="h-1 bg-gray-200 rounded w-1/2"></div>
+                <div className="h-1 bg-gray-200 rounded w-2/3"></div>
+              </div>
+            </div>
+
+            {/* Paper 2 - Middle */}
+            <div className="absolute w-full h-full bg-white border-2 border-gray-300 rounded-lg shadow-lg transform -rotate-2 animate-pulse"
+                 style={{ animationDelay: '0.7s', animationDuration: '2s' }}>
+              <div className="p-2 space-y-1">
+                <div className="h-1 bg-red-200 rounded w-2/3"></div>
+                <div className="h-1 bg-red-200 rounded w-3/4"></div>
+                <div className="h-1 bg-red-200 rounded w-1/2"></div>
+              </div>
+            </div>
+
+            {/* Paper 3 - Top */}
+            <div className="absolute w-full h-full bg-white border-2 border-red-300 rounded-lg shadow-xl transform rotate-1 animate-pulse"
+                 style={{ animationDelay: '1.4s', animationDuration: '2s' }}>
+              <div className="p-2 space-y-1">
+                <div className="h-1 bg-red-300 rounded w-3/4"></div>
+                <div className="h-1 bg-red-300 rounded w-1/2"></div>
+                <div className="h-1 bg-red-300 rounded w-2/3"></div>
+              </div>
+              {/* Government seal */}
+              <div className="absolute bottom-1 right-1 w-3 h-3 bg-red-500 rounded-full opacity-60"></div>
+            </div>
           </div>
         </div>
-        
-        {/* Floating particles */}
-        <div className="absolute -inset-2">
-          <div className="absolute top-0 left-1/2 w-1 h-1 bg-red-400 rounded-full animate-ping" style={{ animationDelay: '0s' }}></div>
-          <div className="absolute top-1/2 right-0 w-1 h-1 bg-orange-400 rounded-full animate-ping" style={{ animationDelay: '0.5s' }}></div>
-          <div className="absolute bottom-0 left-1/2 w-1 h-1 bg-red-400 rounded-full animate-ping" style={{ animationDelay: '1s' }}></div>
-          <div className="absolute top-1/2 left-0 w-1 h-1 bg-orange-400 rounded-full animate-ping" style={{ animationDelay: '1.5s' }}></div>
+
+        {/* Floating document icons */}
+        <div className="absolute -inset-4">
+          <div className="absolute top-0 left-1/2 text-red-400 animate-bounce" style={{ animationDelay: '0s' }}>📄</div>
+          <div className="absolute top-1/2 right-0 text-orange-400 animate-bounce" style={{ animationDelay: '0.5s' }}>📋</div>
+          <div className="absolute bottom-0 left-1/2 text-red-400 animate-bounce" style={{ animationDelay: '1s' }}>📑</div>
+          <div className="absolute top-1/2 left-0 text-orange-400 animate-bounce" style={{ animationDelay: '1.5s' }}>📜</div>
         </div>
       </div>
 

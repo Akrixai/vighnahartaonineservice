@@ -37,7 +37,7 @@ export default function LandingPageClient() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center space-x-4">
-              <Logo size="lg" showText={true} animated={true} />
+              <Logo size="sm" showText={true} animated={true} />
               <div className="hidden sm:block">
                 <span className="text-white/90 text-sm font-medium animate-fade-in">
                   Government Service Portal
@@ -88,7 +88,7 @@ export default function LandingPageClient() {
 
         <div className="text-center relative z-10">
           <div className="animate-fade-in mb-12">
-            <Logo size="xl" showText={true} animated={true} className="justify-center mb-8" />
+            <Logo size="2xl" showText={true} animated={true} className="justify-center mb-8" />
           </div>
 
           {/* Hero Title with gradient text */}

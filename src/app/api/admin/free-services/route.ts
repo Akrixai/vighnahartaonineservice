@@ -13,10 +13,11 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // For admins, show both free services and external URL services
     const { data: freeServices, error } = await supabaseAdmin
       .from('schemes')
       .select('*')
-      .eq('is_free', true)
+      .or('is_free.eq.true,external_url.not.is.null') // Free services OR services with external URL
       .order('created_at', { ascending: false });
 
     if (error) {

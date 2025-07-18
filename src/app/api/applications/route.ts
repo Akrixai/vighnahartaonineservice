@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { UserRole } from '@/types';
 
 // GET /api/applications - Get applications
 export async function GET(request: NextRequest) {
@@ -26,6 +27,7 @@ export async function GET(request: NextRequest) {
         scheme_id,
         form_data,
         documents,
+        dynamic_field_documents,
         status,
         amount,
         notes,
@@ -38,7 +40,7 @@ export async function GET(request: NextRequest) {
         processed_at,
         approved_by,
         rejected_by,
-        schemes (
+        schemes!applications_scheme_id_fkey (
           id,
           name,
           description,
@@ -64,16 +66,32 @@ export async function GET(request: NextRequest) {
       query = query.eq('status', status);
     }
 
-    const { data: applications, error, count } = await query;
+    const { data: applications, error } = await query;
 
     if (error) {
       console.error('Error fetching applications:', error);
       return NextResponse.json({ error: 'Failed to fetch applications' }, { status: 500 });
     }
 
+    // Get total count for pagination
+    let countQuery = supabaseAdmin
+      .from('applications')
+      .select('*', { count: 'exact', head: true });
+
+    // Filter based on user role for count
+    if (session.user.role === 'RETAILER') {
+      countQuery = countQuery.eq('user_id', session.user.id);
+    }
+
+    if (status) {
+      countQuery = countQuery.eq('status', status);
+    }
+
+    const { count } = await countQuery;
+
     return NextResponse.json({
       success: true,
-      data: applications,
+      data: applications || [],
       pagination: {
         page,
         limit,
@@ -92,8 +110,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    
-    if (!session) {
+
+    if (!session || session.user.role !== UserRole.RETAILER) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -102,6 +120,7 @@ export async function POST(request: NextRequest) {
       scheme_id,
       form_data,
       documents,
+      dynamic_field_documents,
       customer_name,
       customer_phone,
       customer_email,
@@ -109,6 +128,7 @@ export async function POST(request: NextRequest) {
       amount
     } = body;
 
+    // Validate required fields
     if (!scheme_id || !customer_name || !customer_phone || !customer_address) {
       return NextResponse.json(
         { error: 'Scheme ID, customer name, phone, and address are required' },
@@ -129,12 +149,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user has sufficient balance (if scheme is not free)
+    let walletId = null;
     if (!scheme.is_free && scheme.price > 0) {
       const { data: wallet, error: walletError } = await supabaseAdmin
         .from('wallets')
         .select('id, balance')
         .eq('user_id', session.user.id)
         .single();
+
+      let currentWallet = wallet;
+      let currentBalance = 0;
 
       if (walletError || !wallet) {
         console.error('Wallet error:', walletError);
@@ -153,21 +177,20 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ error: 'Failed to create wallet' }, { status: 500 });
         }
 
-        // Check balance again with new wallet
-        if (newWallet.balance < scheme.price) {
-          return NextResponse.json(
-            { error: 'Insufficient wallet balance' },
-            { status: 400 }
-          );
-        }
+        currentWallet = newWallet;
+        currentBalance = 0;
       } else {
-        const currentBalance = parseFloat(wallet.balance.toString());
-        if (currentBalance < scheme.price) {
-          return NextResponse.json(
-            { error: 'Insufficient wallet balance' },
-            { status: 400 }
-          );
-        }
+        currentBalance = parseFloat(wallet.balance.toString());
+      }
+
+      walletId = currentWallet?.id;
+
+      // Check balance
+      if (currentBalance < scheme.price) {
+        return NextResponse.json(
+          { error: 'Insufficient wallet balance' },
+          { status: 400 }
+        );
       }
 
       // Deduct amount from wallet
@@ -186,7 +209,7 @@ export async function POST(request: NextRequest) {
         .from('transactions')
         .insert({
           user_id: session.user.id,
-          wallet_id: wallet.id,
+          wallet_id: walletId,
           type: 'SCHEME_PAYMENT',
           amount: -scheme.price,
           status: 'COMPLETED',
@@ -208,6 +231,7 @@ export async function POST(request: NextRequest) {
         scheme_id,
         form_data: form_data || {},
         documents: documents || [],
+        dynamic_field_documents: dynamic_field_documents || {},
         customer_name,
         customer_phone,
         customer_email,
@@ -219,6 +243,7 @@ export async function POST(request: NextRequest) {
         id,
         form_data,
         documents,
+        dynamic_field_documents,
         status,
         amount,
         customer_name,
@@ -253,6 +278,29 @@ export async function POST(request: NextRequest) {
         error: 'Failed to create application',
         details: applicationError.message
       }, { status: 500 });
+    }
+
+    // Send real-time notification to admins/employees
+    try {
+      await supabaseAdmin
+        .from('notifications')
+        .insert({
+          title: 'New Application Submitted',
+          message: `${session.user.name} submitted an application for ${scheme.name}`,
+          type: 'APPLICATION_SUBMITTED',
+          data: {
+            application_id: application.id,
+            scheme_name: scheme.name,
+            customer_name,
+            retailer_name: session.user.name,
+            amount: amount || (scheme.is_free ? 0 : scheme.price)
+          },
+          target_roles: ['ADMIN', 'EMPLOYEE'],
+          created_by: session.user.id
+        });
+    } catch (notificationError) {
+      console.error('Error creating notification:', notificationError);
+      // Don't fail the application creation if notification fails
     }
 
     return NextResponse.json({

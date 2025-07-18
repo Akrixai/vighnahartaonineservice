@@ -6,6 +6,7 @@ import DashboardLayout from '@/components/dashboard/layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { UserRole } from '@/types';
 import { PageLoader } from '@/components/ui/logo-spinner';
+import { supabase } from '@/lib/supabase';
 import { 
   TrendingUp, 
   DollarSign, 
@@ -33,6 +34,12 @@ interface AnalyticsData {
     today: number;
     thisMonth: number;
     dailyProfit: Array<{ date: string; amount: number }>;
+  };
+  commission: {
+    total: number;
+    today: number;
+    thisMonth: number;
+    dailyCommission: Array<{ date: string; amount: number }>;
   };
   users: {
     total: number;
@@ -77,6 +84,53 @@ export default function AdminAnalyticsPage() {
   useEffect(() => {
     if (session?.user?.role === UserRole.ADMIN) {
       fetchAnalytics();
+
+      // Set up real-time subscriptions for analytics data
+      const channels = [
+        supabase
+          .channel('analytics-service-applications')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'service_applications' }, () => {
+            console.log('Service applications changed, refreshing analytics...');
+            fetchAnalytics();
+          })
+          .subscribe(),
+
+        supabase
+          .channel('analytics-users')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => {
+            console.log('Users changed, refreshing analytics...');
+            fetchAnalytics();
+          })
+          .subscribe(),
+
+        supabase
+          .channel('analytics-certificates')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'employee_certificates' }, () => {
+            console.log('Employee certificates changed, refreshing analytics...');
+            fetchAnalytics();
+          })
+          .subscribe(),
+
+        supabase
+          .channel('analytics-retailer-certificates')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'retailer_certificates' }, () => {
+            console.log('Retailer certificates changed, refreshing analytics...');
+            fetchAnalytics();
+          })
+          .subscribe(),
+
+        supabase
+          .channel('analytics-schemes')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'schemes' }, () => {
+            console.log('Schemes changed, refreshing analytics...');
+            fetchAnalytics();
+          })
+          .subscribe()
+      ];
+
+      return () => {
+        channels.forEach(channel => supabase.removeChannel(channel));
+      };
     }
   }, [session, dateRange]);
 
@@ -149,7 +203,7 @@ export default function AdminAnalyticsPage() {
         </Card>
 
         {/* Key Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
           <Card className="border-green-200">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -214,6 +268,23 @@ export default function AdminAnalyticsPage() {
                   </p>
                 </div>
                 <TrendingUp className="w-8 h-8 text-orange-600" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-red-200">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Commission Paid</p>
+                  <p className="text-3xl font-bold text-red-600">
+                    ₹{analytics?.commission.total.toLocaleString() || 0}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    Today: ₹{analytics?.commission.today.toLocaleString() || 0}
+                  </p>
+                </div>
+                <DollarSign className="w-8 h-8 text-red-600" />
               </div>
             </CardContent>
           </Card>
@@ -461,6 +532,50 @@ export default function AdminAnalyticsPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Commission Trends Chart */}
+        <Card className="mt-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <DollarSign className="w-5 h-5 text-red-600" />
+              Commission Trends
+            </CardTitle>
+            <CardDescription>
+              Daily commission payments to retailers
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {analytics?.commission.dailyCommission?.slice(-7).map((day, index) => (
+                <div key={index} className="flex items-center">
+                  <span className="text-sm text-gray-600 w-20">
+                    {new Date(day.date).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric'
+                    })}
+                  </span>
+                  <div className="flex-1 mx-4">
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-gradient-to-r from-red-500 to-red-600 h-2 rounded-full"
+                        style={{
+                          width: `${analytics.commission.dailyCommission.length > 0 ? (day.amount / Math.max(...analytics.commission.dailyCommission.map(d => d.amount))) * 100 : 0}%`
+                        }}
+                      ></div>
+                    </div>
+                  </div>
+                  <span className="text-sm font-medium text-gray-900 w-20 text-right">
+                    ₹{day.amount.toLocaleString()}
+                  </span>
+                </div>
+              )) || (
+                <div className="text-center py-8 text-gray-500">
+                  No commission data available
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </DashboardLayout>
   );

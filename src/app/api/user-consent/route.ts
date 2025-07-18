@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
         consent_version: '1.0',
         consent_data: {
           privacy: consents.privacy,
-          cookies: consents.cookies,
+          terms: consents.terms,
           dataProcessing: consents.dataProcessing,
           marketing: consents.marketing,
           timestamp: timestamp

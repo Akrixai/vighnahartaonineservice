@@ -52,8 +52,8 @@ export default function Footer() {
                 <Link href="/contact" className="block text-white hover:text-yellow-300 transition-colors duration-300 font-medium hover:scale-105 transform">
                   📞 Contact Us
                 </Link>
-                <Link href="/help" className="block text-white hover:text-yellow-300 transition-colors duration-300 font-medium hover:scale-105 transform">
-                  ❓ Help Center
+                <Link href="/register" className="block text-white hover:text-yellow-300 transition-colors duration-300 font-medium hover:scale-105 transform">
+                  💼 Career
                 </Link>
                 <Link href="/faq" className="block text-white hover:text-yellow-300 transition-colors duration-300 font-medium hover:scale-105 transform">
                   💬 FAQ
@@ -73,8 +73,8 @@ export default function Footer() {
                 <Link href="/terms" className="block text-white hover:text-yellow-300 transition-colors duration-300 font-medium hover:scale-105 transform">
                   📋 Terms of Service
                 </Link>
-                <Link href="/cookies" className="block text-white hover:text-yellow-300 transition-colors duration-300 font-medium hover:scale-105 transform">
-                  🍪 Cookie Policy
+                <Link href="/refund-policy" className="block text-white hover:text-yellow-300 transition-colors duration-300 font-medium hover:scale-105 transform">
+                  💰 Refund Policy
                 </Link>
               </div>
             </div>

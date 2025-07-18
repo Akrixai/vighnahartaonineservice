@@ -9,6 +9,7 @@ import { UserRole } from '@/types';
 import { Award, Download, Printer, User, Building, Calendar, Hash, Shield, CheckCircle } from 'lucide-react';
 import jsPDF from 'jspdf';
 import LogoSpinner, { PageLoader } from '@/components/ui/logo-spinner';
+import { showToast } from '@/lib/toast';
 
 interface Certificate {
   id: string;
@@ -77,8 +78,8 @@ export default function EmployeeCertificatesPage() {
           }
         } else {
           // Fallback to client-side generation if API fails
-          const currentDate = new Date();
-          const certificateNumber = `VJS-EMP-${currentDate.getFullYear()}-${String(Math.floor(Math.random() * 100000)).padStart(5, '0')}`;
+          const employeeCreationDate = new Date(session.user.createdAt || new Date());
+          const certificateNumber = `VJS-EMP-${employeeCreationDate.getFullYear()}-${String(Math.floor(Math.random() * 100000)).padStart(5, '0')}`;
 
           setCertificate({
             id: session.user.id,
@@ -87,7 +88,7 @@ export default function EmployeeCertificatesPage() {
             department: session.user.department || 'Government Services',
             branch: branch || 'Main Branch',
             certificate_number: certificateNumber,
-            issue_date: currentDate.toLocaleDateString('en-GB'),
+            issue_date: employeeCreationDate.toLocaleDateString('en-GB'),
             company_name: 'Vignaharta Janseva',
             digital_signature: `VJS-EMP-SIG-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`
           });
@@ -96,8 +97,8 @@ export default function EmployeeCertificatesPage() {
         console.error('Error with certificate:', err);
         setError('Failed to generate certificate');
         // Fallback to client-side generation
-        const currentDate = new Date();
-        const certificateNumber = `VJS-EMP-${currentDate.getFullYear()}-${String(Math.floor(Math.random() * 100000)).padStart(5, '0')}`;
+        const employeeCreationDate = new Date(session.user.createdAt || new Date());
+        const certificateNumber = `VJS-EMP-${employeeCreationDate.getFullYear()}-${String(Math.floor(Math.random() * 100000)).padStart(5, '0')}`;
 
         setCertificate({
           id: session.user.id,
@@ -106,7 +107,7 @@ export default function EmployeeCertificatesPage() {
           department: session.user.department || 'Government Services',
           branch: branch || 'Main Branch',
           certificate_number: certificateNumber,
-          issue_date: currentDate.toLocaleDateString('en-GB'),
+          issue_date: employeeCreationDate.toLocaleDateString('en-GB'),
           company_name: 'Vignaharta Janseva',
           digital_signature: `VJS-EMP-SIG-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`
         });
@@ -255,7 +256,9 @@ export default function EmployeeCertificatesPage() {
       doc.save(`employee-certificate-${certificate.certificate_number}.pdf`);
     } catch (error) {
       console.error('Error generating PDF:', error);
-      alert('Failed to generate PDF certificate. Please try again.');
+      showToast.error('Failed to generate PDF certificate', {
+        description: 'Please try again'
+      });
     }
   };
 

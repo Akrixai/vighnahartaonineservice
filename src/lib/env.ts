@@ -48,13 +48,24 @@ export const serverEnv = {
 
 // Validate server environment
 export function validateServerEnv() {
+  // Only validate on server side
+  if (typeof window !== 'undefined') {
+    return;
+  }
+
   const requiredServerVars = [
     'SUPABASE_SERVICE_ROLE_KEY',
   ];
-  
-  const missingVars = requiredServerVars.filter(varName => !serverEnv[varName as keyof typeof serverEnv]);
-  
+
+  const missingVars = requiredServerVars.filter(varName => {
+    const value = serverEnv[varName as keyof typeof serverEnv];
+    return !value || value === '';
+  });
+
   if (missingVars.length > 0) {
-    throw new Error(`Missing required server environment variables: ${missingVars.join(', ')}`);
+    console.warn(`Missing required server environment variables: ${missingVars.join(', ')}`);
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(`Missing required server environment variables: ${missingVars.join(', ')}`);
+    }
   }
 }

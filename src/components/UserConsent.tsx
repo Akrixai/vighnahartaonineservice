@@ -13,7 +13,7 @@ export default function UserConsent({ onConsentGiven }: UserConsentProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [consents, setConsents] = useState({
     privacy: false,
-    cookies: false,
+    terms: false,
     dataProcessing: false,
     marketing: false
   });
@@ -35,10 +35,23 @@ export default function UserConsent({ onConsentGiven }: UserConsentProps) {
       required: true
     },
     {
-      title: "🍪 Cookies & Analytics", 
+      title: "📋 Terms & Conditions",
       icon: <Eye className="w-8 h-8" />,
-      description: "We use cookies to improve your experience and analyze website usage. Essential cookies are required for functionality.",
-      key: 'cookies' as keyof typeof consents,
+      description: (
+        <span>
+          By using our services, you agree to our{' '}
+          <a
+            href="/terms"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 hover:text-blue-800 underline"
+          >
+            terms and conditions
+          </a>
+          . Please read them carefully to understand your rights and obligations.
+        </span>
+      ),
+      key: 'terms' as keyof typeof consents,
       required: true
     },
     {
@@ -175,9 +188,13 @@ export default function UserConsent({ onConsentGiven }: UserConsentProps) {
                 <h3 className="text-xl font-bold text-gray-900 mb-2">
                   {currentStepData.title}
                 </h3>
-                <p className="text-gray-600 leading-relaxed">
-                  {currentStepData.description}
-                </p>
+                <div className="text-gray-600 leading-relaxed">
+                  {typeof currentStepData.description === 'string' ? (
+                    <p>{currentStepData.description}</p>
+                  ) : (
+                    <p>{currentStepData.description}</p>
+                  )}
+                </div>
               </div>
 
               {/* Consent Options */}

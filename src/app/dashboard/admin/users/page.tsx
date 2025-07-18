@@ -160,7 +160,7 @@ export default function AdminUsersPage() {
 
       if (response.ok) {
         await fetchUsers();
-        alert(`User ${!currentStatus ? 'activated' : 'deactivated'} successfully!`);
+        showToast.success(`User ${!currentStatus ? 'activated' : 'deactivated'} successfully!`);
       }
     } catch (error) {
       console.error('Error updating user status:', error);

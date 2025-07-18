@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import DashboardLayout from '@/components/dashboard/layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { UserRole } from '@/types';
 import { PageLoader } from '@/components/ui/logo-spinner';
 import { ExternalLink, Globe, Search } from 'lucide-react';
@@ -18,7 +19,7 @@ interface FreeService {
   is_active: boolean;
 }
 
-export default function FreeServicesPage() {
+export default function EmployeeFreeServicesPage() {
   const { data: session } = useSession();
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
@@ -26,7 +27,7 @@ export default function FreeServicesPage() {
   const [servicesLoading, setServicesLoading] = useState(true);
 
   useEffect(() => {
-    if (session?.user?.role === UserRole.RETAILER) {
+    if (session?.user?.role === UserRole.EMPLOYEE) {
       fetchFreeServices();
     }
   }, [session]);
@@ -34,7 +35,7 @@ export default function FreeServicesPage() {
   const fetchFreeServices = async () => {
     try {
       setServicesLoading(true);
-      const response = await fetch('/api/free-services');
+      const response = await fetch('/api/employee/free-services');
       if (response.ok) {
         const data = await response.json();
         setFreeServices(data.freeServices || []);
@@ -48,6 +49,17 @@ export default function FreeServicesPage() {
 
   if (!session) {
     return null; // Middleware will redirect
+  }
+
+  if (session.user.role !== UserRole.EMPLOYEE) {
+    return (
+      <DashboardLayout>
+        <div className="text-center py-12">
+          <h1 className="text-2xl font-bold text-red-600 mb-4">Access Denied</h1>
+          <p className="text-gray-600">Only employees can access this page.</p>
+        </div>
+      </DashboardLayout>
+    );
   }
 
   if (servicesLoading) {
@@ -97,61 +109,57 @@ export default function FreeServicesPage() {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg p-6 text-white">
-          <h1 className="text-2xl font-bold mb-2">Free Services</h1>
-          <p className="text-green-100">
-            Access free government information services and check various document statuses.
+        <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-6 text-white">
+          <h1 className="text-2xl font-bold mb-2">Free Services & External Links</h1>
+          <p className="text-blue-100">
+            Access free government information services and external resources for customer assistance.
           </p>
           <div className="mt-4 bg-white/20 rounded-lg p-3">
             <div className="flex items-center justify-between">
-              <span>💡 All services on this page are completely free!</span>
-              <span className="text-xl font-bold">₹0.00</span>
+              <span>💡 Help customers access these free services and external resources!</span>
+              <span className="text-xl font-bold">Employee Access</span>
             </div>
           </div>
         </div>
 
-        {/* Search and Filter */}
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <input
-                  type="text"
-                  placeholder="Search free services..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                />
-              </div>
-              <div className="flex gap-2 flex-wrap">
-                {categories.map((category) => (
-                  <button
-                    key={category}
-                    onClick={() => setSelectedCategory(category)}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      selectedCategory === category
-                        ? 'bg-red-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-red-50 hover:text-red-600'
-                    }`}
-                  >
-                    {category}
-                  </button>
-                ))}
-              </div>
+        {/* Filters */}
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex-1">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Input
+                type="text"
+                placeholder="Search services..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
             </div>
-          </CardContent>
-        </Card>
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            {categories.map((category) => (
+              <Button
+                key={category}
+                variant={selectedCategory === category ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSelectedCategory(category)}
+                className={selectedCategory === category ? "bg-blue-600 hover:bg-blue-700" : ""}
+              >
+                {category}
+              </Button>
+            ))}
+          </div>
+        </div>
 
         {/* Services Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredServices.map((service) => (
-            <Card key={service.id} className="hover:shadow-lg transition-shadow border-l-4 border-l-green-500">
+            <Card key={service.id} className="hover:shadow-lg transition-shadow border-l-4 border-l-blue-500">
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div>
                     <CardTitle className="text-lg flex items-center">
-                      <Globe className="w-5 h-5 mr-2 text-green-600" />
+                      <Globe className="w-5 h-5 mr-2 text-blue-600" />
                       {service.name}
                     </CardTitle>
                     <CardDescription className="text-sm text-gray-500">
@@ -159,8 +167,8 @@ export default function FreeServicesPage() {
                     </CardDescription>
                   </div>
                   <div className="text-right">
-                    <div className="text-2xl font-bold text-green-600">
-                      FREE
+                    <div className="text-sm font-bold text-blue-600">
+                      {service.external_url ? 'EXTERNAL' : 'FREE'}
                     </div>
                   </div>
                 </div>
@@ -169,26 +177,15 @@ export default function FreeServicesPage() {
                 <p className="text-sm text-gray-600 mb-4">
                   {service.description}
                 </p>
-
-                <div className="space-y-3">
-                  <div className="flex items-center text-xs text-gray-500">
-                    <ExternalLink className="w-4 h-4 mr-1" />
-                    <span>Redirects to external website</span>
-                  </div>
-
-                  <div className="flex items-center text-xs text-gray-500">
-                    <span className="mr-1">⚡</span>
-                    Processing Time: Instant
-                  </div>
-                </div>
-
-                <div className="mt-4 pt-4 border-t">
+                
+                <div className="flex gap-2">
                   <Button
                     onClick={() => handleAccessService(service)}
-                    className="w-full bg-red-600 hover:bg-red-700 text-white flex items-center justify-center"
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                    disabled={!service.external_url}
                   >
                     <ExternalLink className="w-4 h-4 mr-2" />
-                    Access Now
+                    Access Service
                   </Button>
                 </div>
               </CardContent>
@@ -196,15 +193,16 @@ export default function FreeServicesPage() {
           ))}
         </div>
 
+        {/* Empty State */}
         {filteredServices.length === 0 && (
-          <Card>
-            <CardContent className="text-center py-12">
-              <div className="text-4xl mb-4">🔍</div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No free services found</h3>
-              <p className="text-gray-600">
+          <Card className="text-center py-12">
+            <CardContent>
+              <Globe className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-gray-600 mb-2">No Services Found</h3>
+              <p className="text-gray-500">
                 {searchTerm || selectedCategory !== 'All' 
-                  ? 'Try adjusting your search or filter criteria'
-                  : 'No free services are currently available'
+                  ? 'Try adjusting your search or filter criteria.'
+                  : 'No free services are currently available.'
                 }
               </p>
             </CardContent>
@@ -212,26 +210,26 @@ export default function FreeServicesPage() {
         )}
 
         {/* Information Card */}
-        <Card className="bg-green-50 border-green-200">
+        <Card className="bg-blue-50 border-blue-200">
           <CardHeader>
-            <CardTitle className="text-green-900">🆓 About Free Services</CardTitle>
+            <CardTitle className="text-blue-900">🔗 About Free Services & External Links</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
               <div className="text-center">
-                <div className="text-2xl mb-2">💰</div>
-                <h4 className="font-medium text-green-900 mb-1">No Cost</h4>
-                <p className="text-green-700">All services on this page are completely free</p>
+                <div className="text-2xl mb-2">🆓</div>
+                <h4 className="font-medium text-blue-900 mb-1">Free Access</h4>
+                <p className="text-blue-700">Help customers access free government services</p>
               </div>
               <div className="text-center">
-                <div className="text-2xl mb-2">⚡</div>
-                <h4 className="font-medium text-green-900 mb-1">Instant Access</h4>
-                <p className="text-green-700">Get information and status updates immediately</p>
+                <div className="text-2xl mb-2">🔗</div>
+                <h4 className="font-medium text-blue-900 mb-1">External Resources</h4>
+                <p className="text-blue-700">Direct links to official government portals</p>
               </div>
               <div className="text-center">
-                <div className="text-2xl mb-2">🔒</div>
-                <h4 className="font-medium text-green-900 mb-1">Secure</h4>
-                <p className="text-green-700">Your information is protected and confidential</p>
+                <div className="text-2xl mb-2">👥</div>
+                <h4 className="font-medium text-blue-900 mb-1">Customer Support</h4>
+                <p className="text-blue-700">Assist customers with service access and information</p>
               </div>
             </div>
           </CardContent>

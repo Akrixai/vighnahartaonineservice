@@ -39,6 +39,8 @@ export default function AdvertisementsPage() {
     display_order: 0,
     is_active: true
   });
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const fetchAdvertisements = async () => {
     try {
@@ -65,18 +67,25 @@ export default function AdvertisementsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!formData.title || !formData.image_url) {
+
+    if (!formData.title || (!formData.image_url && !selectedImage)) {
       showToast.warning('Missing required fields', {
-        description: 'Please provide both title and image URL.'
+        description: 'Please provide both title and image.'
       });
       return;
     }
 
     try {
+      let imageUrl = formData.image_url;
+
+      // Upload new image if selected
+      if (selectedImage) {
+        imageUrl = await uploadImage(selectedImage);
+      }
+
       const method = editingId ? 'PUT' : 'POST';
-      const body = editingId ? { ...formData, id: editingId } : formData;
-      
+      const body = editingId ? { ...formData, id: editingId, image_url: imageUrl } : { ...formData, image_url: imageUrl };
+
       const response = await fetch('/api/login-advertisements', {
         method,
         headers: { 'Content-Type': 'application/json' },
@@ -110,6 +119,51 @@ export default function AdvertisementsPage() {
     }
   };
 
+  const uploadImage = async (file: File): Promise<string> => {
+    const uploadFormData = new FormData();
+    uploadFormData.append('file', file);
+    uploadFormData.append('folder', 'advertisements');
+
+    const uploadResponse = await fetch('/api/upload', {
+      method: 'POST',
+      body: uploadFormData,
+    });
+
+    if (!uploadResponse.ok) {
+      throw new Error('Failed to upload image');
+    }
+
+    const uploadData = await uploadResponse.json();
+    return uploadData.url;
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedImage(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      title: '',
+      description: '',
+      image_url: '',
+      link_url: '',
+      display_order: 0,
+      is_active: true
+    });
+    setSelectedImage(null);
+    setImagePreview(null);
+    setEditingId(null);
+    setShowAddForm(false);
+  };
+
   const handleEdit = (ad: LoginAdvertisement) => {
     setFormData({
       title: ad.title,
@@ -119,6 +173,8 @@ export default function AdvertisementsPage() {
       display_order: ad.display_order,
       is_active: ad.is_active
     });
+    setSelectedImage(null);
+    setImagePreview(ad.image_url);
     setEditingId(ad.id);
     setShowAddForm(true);
   };
@@ -252,14 +308,25 @@ export default function AdvertisementsPage() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="image_url">Image URL *</Label>
-                    <Input
-                      id="image_url"
-                      value={formData.image_url}
-                      onChange={(e) => setFormData(prev => ({ ...prev, image_url: e.target.value }))}
-                      placeholder="https://example.com/image.jpg"
-                      required
-                    />
+                    <Label htmlFor="image">Advertisement Image *</Label>
+                    <div className="space-y-4">
+                      <Input
+                        id="image"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageChange}
+                        className="cursor-pointer"
+                      />
+                      {imagePreview && (
+                        <div className="relative w-full h-48 border rounded-lg overflow-hidden">
+                          <img
+                            src={imagePreview}
+                            alt="Preview"
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
                 

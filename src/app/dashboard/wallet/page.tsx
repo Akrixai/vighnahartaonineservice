@@ -14,6 +14,7 @@ import QRPaymentModal from '@/components/wallet/QRPaymentModal';
 import PaymentSuccess from '@/components/PaymentSuccess';
 import LogoSpinner, { PageLoader } from '@/components/ui/logo-spinner';
 import { showToast } from '@/lib/toast';
+import { supabase } from '@/lib/supabase';
 
 const mockTransactions = [
   { id: '1', type: 'DEPOSIT', amount: 1000, description: 'Wallet top-up via Razorpay', reference: 'pay_123456', status: 'COMPLETED', createdAt: new Date('2024-01-15T10:30:00') },
@@ -71,9 +72,27 @@ export default function WalletPage() {
 
     fetchWallet();
 
-    // Poll for wallet updates every 30 seconds to reduce frequent reloading
-    const interval = setInterval(fetchWallet, 30000);
-    return () => clearInterval(interval);
+    // Set up real-time subscription for wallet updates
+    const channel = supabase
+      .channel('wallet-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'wallets',
+          filter: `user_id=eq.${session.user.id}`
+        },
+        (payload) => {
+          console.log('Wallet change detected:', payload);
+          fetchWallet(); // Refresh wallet data
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [getWallet, session]);
 
   // Fetch transactions with real-time updates
@@ -91,9 +110,27 @@ export default function WalletPage() {
 
     fetchTransactions();
 
-    // Poll for transaction updates every 15 seconds
-    const interval = setInterval(fetchTransactions, 15000);
-    return () => clearInterval(interval);
+    // Set up real-time subscription for transactions
+    const channel = supabase
+      .channel('transactions-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'transactions',
+          filter: `user_id=eq.${session.user.id}`
+        },
+        (payload) => {
+          console.log('Transaction change detected:', payload);
+          fetchTransactions(); // Refresh transactions
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [getTransactions, session]);
 
   if (!session) {

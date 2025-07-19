@@ -5,9 +5,13 @@ import { useSession } from 'next-auth/react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Trash2, Database, AlertTriangle, CheckCircle, Clock, FileText, Bell, MessageSquare } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Trash2, Database, AlertTriangle, CheckCircle, Clock, FileText, Bell, MessageSquare, Calendar, Settings } from 'lucide-react';
 import DashboardLayout from '@/components/dashboard/layout';
 import { showToast } from '@/lib/toast';
+import { supabase } from '@/lib/supabase';
 
 interface DataStats {
   applications: number;
@@ -28,53 +32,64 @@ interface CleanupTask {
   riskLevel: 'low' | 'medium' | 'high';
   estimatedSpace: string;
   lastCleanup?: string;
+  defaultDays: number;
+  minDays: number;
+  maxDays: number;
+  timeUnit: 'days' | 'months' | 'years';
 }
 
 const cleanupTasks: CleanupTask[] = [
   {
     id: 'old-applications',
     name: 'Old Applications',
-    description: 'Remove applications older than 6 months with status REJECTED or COMPLETED',
+    description: 'Remove applications with status REJECTED or COMPLETED',
     icon: <FileText className="w-5 h-5" />,
     dataType: 'applications',
     riskLevel: 'low',
-    estimatedSpace: '~50MB'
+    estimatedSpace: '~50MB',
+    defaultDays: 180,
+    minDays: 1, // Minimum 1 day
+    maxDays: 365,
+    timeUnit: 'days'
   },
   {
     id: 'notifications',
     name: 'Old Notifications',
-    description: 'Remove notifications older than 30 days',
+    description: 'Remove old notifications to free up space',
     icon: <Bell className="w-5 h-5" />,
     dataType: 'notifications',
     riskLevel: 'low',
-    estimatedSpace: '~10MB'
+    estimatedSpace: '~10MB',
+    defaultDays: 30,
+    minDays: 1, // Minimum 1 day
+    maxDays: 90,
+    timeUnit: 'days'
   },
   {
     id: 'resolved-queries',
     name: 'Resolved Support Queries',
-    description: 'Remove support queries that are resolved and older than 3 months',
+    description: 'Remove support queries that are resolved',
     icon: <MessageSquare className="w-5 h-5" />,
     dataType: 'queries',
     riskLevel: 'low',
-    estimatedSpace: '~20MB'
+    estimatedSpace: '~20MB',
+    defaultDays: 90,
+    minDays: 1, // Minimum 1 day
+    maxDays: 180,
+    timeUnit: 'days'
   },
   {
     id: 'old-transactions',
     name: 'Old Transaction Logs',
-    description: 'Archive transaction logs older than 1 year (keeps financial records)',
+    description: 'Archive old transaction logs (keeps financial records)',
     icon: <Database className="w-5 h-5" />,
     dataType: 'transactions',
     riskLevel: 'medium',
-    estimatedSpace: '~100MB'
-  },
-  {
-    id: 'expired-ads',
-    name: 'Expired Advertisements',
-    description: 'Remove advertisements that have expired and are inactive',
-    icon: <Trash2 className="w-5 h-5" />,
-    dataType: 'advertisements',
-    riskLevel: 'low',
-    estimatedSpace: '~30MB'
+    estimatedSpace: '~100MB',
+    defaultDays: 365,
+    minDays: 1, // Minimum 1 day
+    maxDays: 1095,
+    timeUnit: 'days'
   }
 ];
 
@@ -83,9 +98,42 @@ export default function DataCleanupPage() {
   const [dataStats, setDataStats] = useState<DataStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [cleanupLoading, setCleanupLoading] = useState<string | null>(null);
+  const [customDays, setCustomDays] = useState<Record<string, number>>({});
+  const [showCustomSettings, setShowCustomSettings] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     fetchDataStats();
+
+    // Set up real-time subscriptions for data changes
+    const channels = [
+      supabase
+        .channel('data-cleanup-applications')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'applications' }, () => {
+          console.log('Applications changed, refreshing stats...');
+          fetchDataStats();
+        })
+        .subscribe(),
+
+      supabase
+        .channel('data-cleanup-notifications')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => {
+          console.log('Notifications changed, refreshing stats...');
+          fetchDataStats();
+        })
+        .subscribe(),
+
+      supabase
+        .channel('data-cleanup-transactions')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => {
+          console.log('Transactions changed, refreshing stats...');
+          fetchDataStats();
+        })
+        .subscribe()
+    ];
+
+    return () => {
+      channels.forEach(channel => supabase.removeChannel(channel));
+    };
   }, []);
 
   const fetchDataStats = async () => {
@@ -107,8 +155,9 @@ export default function DataCleanupPage() {
     const task = cleanupTasks.find(t => t.id === taskId);
     if (!task) return;
 
+    const daysToDelete = customDays[taskId] || task.defaultDays;
     const confirmed = window.confirm(
-      `Are you sure you want to clean up ${task.name}?\n\n${task.description}\n\nThis action cannot be undone.`
+      `Are you sure you want to clean up ${task.name}?\n\n${task.description}\n\nData older than ${daysToDelete} days will be deleted.\n\nThis action cannot be undone.`
     );
 
     if (!confirmed) return;
@@ -120,7 +169,7 @@ export default function DataCleanupPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ taskId }),
+        body: JSON.stringify({ taskId, customDays: daysToDelete }),
       });
 
       const result = await response.json();
@@ -267,28 +316,71 @@ export default function DataCleanupPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="flex items-center justify-between">
-                  <div className="text-sm text-gray-600">
-                    <div>Records: {dataStats?.[task.dataType]?.toLocaleString() || 'N/A'}</div>
-                    <div>Est. Space: {task.estimatedSpace}</div>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm text-gray-600">
+                      <div>Records: {dataStats?.[task.dataType]?.toLocaleString() || 'N/A'}</div>
+                      <div>Est. Space: {task.estimatedSpace}</div>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowCustomSettings(prev => ({
+                        ...prev,
+                        [task.id]: !prev[task.id]
+                      }))}
+                      className="text-gray-600 hover:text-gray-800"
+                    >
+                      <Settings className="w-4 h-4 mr-1" />
+                      {showCustomSettings[task.id] ? 'Hide' : 'Settings'}
+                    </Button>
                   </div>
-                  <Button
-                    onClick={() => handleCleanup(task.id)}
-                    disabled={cleanupLoading === task.id || !dataStats?.[task.dataType]}
-                    className="bg-red-600 hover:bg-red-700 text-white"
-                  >
-                    {cleanupLoading === task.id ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        Cleaning...
-                      </>
-                    ) : (
-                      <>
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Clean Up
-                      </>
-                    )}
-                  </Button>
+
+                  {/* Custom Time Period Settings */}
+                  {showCustomSettings[task.id] && (
+                    <div className="p-4 bg-gray-50 rounded-lg border">
+                      <Label htmlFor={`days-${task.id}`} className="text-sm font-medium text-gray-700">
+                        Delete data older than (days):
+                      </Label>
+                      <div className="mt-2 flex items-center space-x-2">
+                        <Input
+                          id={`days-${task.id}`}
+                          type="number"
+                          min={task.minDays}
+                          max={task.maxDays}
+                          value={customDays[task.id] || task.defaultDays}
+                          onChange={(e) => setCustomDays(prev => ({
+                            ...prev,
+                            [task.id]: parseInt(e.target.value) || task.defaultDays
+                          }))}
+                          className="w-24"
+                        />
+                        <span className="text-sm text-gray-500">
+                          (Min: {task.minDays}, Max: {task.maxDays}, Default: {task.defaultDays})
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex justify-end">
+                    <Button
+                      onClick={() => handleCleanup(task.id)}
+                      disabled={cleanupLoading === task.id || !dataStats?.[task.dataType]}
+                      className="bg-red-600 hover:bg-red-700 text-white"
+                    >
+                      {cleanupLoading === task.id ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          Cleaning...
+                        </>
+                      ) : (
+                        <>
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Clean Up ({customDays[task.id] || task.defaultDays} days)
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>

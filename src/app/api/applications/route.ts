@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { supabaseAdmin } from '@/lib/supabase';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { UserRole } from '@/types';
@@ -125,7 +125,9 @@ export async function POST(request: NextRequest) {
       customer_phone,
       customer_email,
       customer_address,
-      amount
+      amount,
+      is_reapply = false,
+      original_application_id
     } = body;
 
     // Validate required fields
@@ -148,9 +150,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Scheme not found' }, { status: 404 });
     }
 
-    // Check if user has sufficient balance (if scheme is not free)
+    // Check if user has sufficient balance (if scheme is not free and not a reapplication)
     let walletId = null;
-    if (!scheme.is_free && scheme.price > 0) {
+    if (!scheme.is_free && scheme.price > 0 && !is_reapply) {
       const { data: wallet, error: walletError } = await supabaseAdmin
         .from('wallets')
         .select('id, balance')
@@ -185,7 +187,7 @@ export async function POST(request: NextRequest) {
 
       walletId = currentWallet?.id;
 
-      // Check balance
+      // Check balance and deduct money immediately upon application submission
       if (currentBalance < scheme.price) {
         return NextResponse.json(
           { error: 'Insufficient wallet balance' },
@@ -193,15 +195,22 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Deduct amount from wallet
-      const { error: deductError } = await supabaseAdmin
+      // Deduct money from wallet immediately
+      const newBalance = currentBalance - scheme.price;
+      const { error: walletUpdateError } = await supabaseAdmin
         .from('wallets')
-        .update({ balance: currentBalance - scheme.price })
-        .eq('user_id', session.user.id);
+        .update({
+          balance: newBalance,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', walletId);
 
-      if (deductError) {
-        console.error('Error deducting from wallet:', deductError);
-        return NextResponse.json({ error: 'Failed to process payment' }, { status: 500 });
+      if (walletUpdateError) {
+        console.error('Error updating wallet balance:', walletUpdateError);
+        return NextResponse.json(
+          { error: 'Failed to deduct amount from wallet' },
+          { status: 500 }
+        );
       }
 
       // Create transaction record
@@ -211,10 +220,12 @@ export async function POST(request: NextRequest) {
           user_id: session.user.id,
           wallet_id: walletId,
           type: 'SCHEME_PAYMENT',
-          amount: -scheme.price,
+          amount: scheme.price,
           status: 'COMPLETED',
           description: `Payment for ${scheme.name}`,
-          reference: `scheme_${scheme_id}`
+          reference: `scheme_${scheme_id}`,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         });
 
       if (transactionError) {
@@ -236,8 +247,10 @@ export async function POST(request: NextRequest) {
         customer_phone,
         customer_email,
         customer_address,
-        amount: amount || (scheme.is_free ? 0 : scheme.price),
-        status: 'PENDING'
+        amount: is_reapply ? 0 : (amount || (scheme.is_free ? 0 : scheme.price)),
+        status: 'PENDING',
+        notes: is_reapply ? `REAPPLICATION - Original Application ID: ${original_application_id}` : null,
+        commission_rate: scheme.commission_rate || 0
       })
       .select(`
         id,
@@ -282,18 +295,25 @@ export async function POST(request: NextRequest) {
 
     // Send real-time notification to admins/employees
     try {
+      const notificationTitle = is_reapply ? 'New Reapplication Submitted' : 'New Application Submitted';
+      const notificationMessage = is_reapply
+        ? `${session.user.name} submitted a reapplication for ${scheme.name}`
+        : `${session.user.name} submitted an application for ${scheme.name}`;
+
       await supabaseAdmin
         .from('notifications')
         .insert({
-          title: 'New Application Submitted',
-          message: `${session.user.name} submitted an application for ${scheme.name}`,
+          title: notificationTitle,
+          message: notificationMessage,
           type: 'APPLICATION_SUBMITTED',
           data: {
             application_id: application.id,
             scheme_name: scheme.name,
             customer_name,
             retailer_name: session.user.name,
-            amount: amount || (scheme.is_free ? 0 : scheme.price)
+            amount: is_reapply ? 0 : (amount || (scheme.is_free ? 0 : scheme.price)),
+            is_reapply: is_reapply,
+            original_application_id: original_application_id
           },
           target_roles: ['ADMIN', 'EMPLOYEE'],
           created_by: session.user.id

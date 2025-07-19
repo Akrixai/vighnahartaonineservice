@@ -76,7 +76,7 @@ export async function sendNewServiceNotifications(
     console.log('📧 Sending new service notification emails...');
     
     // Import supabase here to avoid circular dependencies
-    const { supabaseAdmin } = await import('./supabase-admin');
+    const { supabaseAdmin } = await import('./supabase');
     
     // Get all active retailers and employees with email addresses
     const { data: users, error } = await supabaseAdmin

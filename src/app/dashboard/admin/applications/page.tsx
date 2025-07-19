@@ -51,15 +51,27 @@ export default function AdminApplicationsPage() {
     if (!selectedApp || !actionType) return;
 
     try {
-      let url = `/api/admin/applications/${selectedApp.id}`;
-      let method = 'PUT';
+      let url: string;
+      let method: string;
       let body: any = {};
 
       if (actionType === 'delete') {
+        url = `/api/admin/applications/${selectedApp.id}`;
         method = 'DELETE';
-      } else {
+      } else if (actionType === 'approve') {
+        // Use the simple admin applications endpoint for approval (no wallet deduction)
+        url = `/api/admin/applications/${selectedApp.id}`;
+        method = 'PUT';
         body = {
-          status: actionType === 'approve' ? 'APPROVED' : 'REJECTED',
+          status: 'APPROVED',
+          notes: notes.trim() || undefined
+        };
+      } else if (actionType === 'reject') {
+        // Use the simple admin applications endpoint for rejection
+        url = `/api/admin/applications/${selectedApp.id}`;
+        method = 'PUT';
+        body = {
+          status: 'REJECTED',
           notes: notes.trim() || undefined
         };
       }
@@ -70,15 +82,22 @@ export default function AdminApplicationsPage() {
         body: method !== 'DELETE' ? JSON.stringify(body) : undefined
       });
 
+      const result = await response.json();
+
       if (response.ok) {
         refresh(); // Use the refresh function from the hook
         setShowModal(false);
         setSelectedApp(null);
         setActionType(null);
         setNotes('');
-        showToast.success(`Application ${actionType}d successfully!`);
+
+        if (actionType === 'approve' && result.wallet_info) {
+          showToast.success(`Application approved successfully! ₹${result.wallet_info.amount_deducted} deducted from wallet. Remaining balance: ₹${result.wallet_info.remaining_balance}`);
+        } else {
+          showToast.success(`Application ${actionType}d successfully!`);
+        }
       } else {
-        showToast.error(`Failed to ${actionType} application`);
+        showToast.error(result.error || `Failed to ${actionType} application`);
       }
     } catch (error) {
       console.error(`Error ${actionType}ing application:`, error);

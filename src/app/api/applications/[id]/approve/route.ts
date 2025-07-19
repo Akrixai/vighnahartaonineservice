@@ -1,28 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { supabaseAdmin } from '@/lib/supabase';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 
 // POST /api/applications/[id]/approve - Approve application
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session || !['ADMIN', 'EMPLOYEE'].includes(session.user.role)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const applicationId = params.id;
+    const { id } = await params;
+    const applicationId = id;
     const body = await request.json();
     const { notes } = body;
 
-    // Get application details
+    // Get application details with user wallet information
     const { data: application, error: appError } = await supabaseAdmin
       .from('applications')
-      .select('*')
+      .select(`
+        *,
+        users (
+          id,
+          name,
+          email,
+          wallets (
+            id,
+            balance
+          )
+        ),
+        schemes (
+          id,
+          name,
+          price,
+          commission_rate
+        )
+      `)
       .eq('id', applicationId)
       .single();
 
@@ -35,6 +53,75 @@ export async function POST(
         { error: 'Application is not in pending status' },
         { status: 400 }
       );
+    }
+
+    // Check if user has a wallet
+    const userWallet = application.users.wallets?.[0];
+    if (!userWallet) {
+      return NextResponse.json({
+        error: 'User does not have a wallet. Cannot process payment.'
+      }, { status: 400 });
+    }
+
+    // Get the service amount (use scheme price or application amount)
+    const serviceAmount = parseFloat(application.schemes?.price?.toString() || application.amount?.toString() || '0');
+
+    if (serviceAmount > 0) {
+      // Check wallet balance
+      const currentBalance = parseFloat(userWallet.balance.toString());
+
+      if (currentBalance < serviceAmount) {
+        return NextResponse.json({
+          error: `Insufficient wallet balance. Required: ₹${serviceAmount}, Available: ₹${currentBalance}`
+        }, { status: 400 });
+      }
+    }
+
+    // Deduct service amount from wallet if applicable
+    if (serviceAmount > 0) {
+      const newBalance = parseFloat(userWallet.balance.toString()) - serviceAmount;
+
+      // Update wallet balance
+      const { error: walletUpdateError } = await supabaseAdmin
+        .from('wallets')
+        .update({
+          balance: newBalance,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userWallet.id);
+
+      if (walletUpdateError) {
+        console.error('Error updating wallet balance:', walletUpdateError);
+        return NextResponse.json({
+          error: 'Failed to deduct service amount from wallet'
+        }, { status: 500 });
+      }
+
+      // Create debit transaction record
+      const { error: transactionError } = await supabaseAdmin
+        .from('transactions')
+        .insert({
+          user_id: application.user_id,
+          wallet_id: userWallet.id,
+          type: 'SCHEME_PAYMENT',
+          amount: serviceAmount,
+          status: 'COMPLETED',
+          description: `Payment for ${application.schemes?.name || 'service'} application`,
+          reference: `APP_${applicationId}`,
+          metadata: {
+            application_id: applicationId,
+            scheme_id: application.scheme_id,
+            scheme_name: application.schemes?.name,
+            approved_by: session.user.id
+          },
+          processed_by: session.user.id,
+          processed_at: new Date().toISOString()
+        });
+
+      if (transactionError) {
+        console.error('Error creating transaction record:', transactionError);
+        // Don't fail the approval, but log the error
+      }
     }
 
     // Update application status
@@ -79,43 +166,47 @@ export async function POST(
     // Handle commission payment if applicable
     if (!application.commission_paid) {
       try {
-        // Get scheme details
-        const { data: scheme } = await supabaseAdmin
-          .from('schemes')
-          .select('commission_rate')
-          .eq('id', application.scheme_id)
-          .single();
-
-        // Get user wallet
-        const { data: wallet } = await supabaseAdmin
-          .from('wallets')
-          .select('id, balance')
-          .eq('user_id', application.user_id)
-          .single();
-
-        const commissionRate = scheme?.commission_rate || 0;
-        const applicationAmount = parseFloat(application.amount?.toString() || '0');
+        const commissionRate = application.schemes?.commission_rate || 0;
+        // For commission calculation, use original scheme price even for reapplications
+        const isReapplication = application.notes && application.notes.includes('REAPPLICATION');
+        const applicationAmount = isReapplication ? parseFloat(application.schemes?.price?.toString() || '0') : serviceAmount;
         const commissionAmount = (applicationAmount * commissionRate) / 100;
 
-        if (commissionAmount > 0 && wallet) {
-          const currentBalance = parseFloat(wallet.balance.toString());
+        console.log('Commission calculation:', {
+          isReapplication,
+          applicationAmount,
+          commissionRate,
+          commissionAmount,
+          schemePrice: application.schemes?.price,
+          serviceAmount
+        });
+
+        if (commissionAmount > 0 && userWallet) {
+          // Get current balance after service deduction
+          const { data: currentWallet } = await supabaseAdmin
+            .from('wallets')
+            .select('balance')
+            .eq('id', userWallet.id)
+            .single();
+
+          const currentBalance = parseFloat(currentWallet?.balance?.toString() || '0');
           const newBalance = currentBalance + commissionAmount;
 
-          // Update wallet balance
+          // Update wallet balance with commission
           await supabaseAdmin
             .from('wallets')
             .update({
               balance: newBalance,
               updated_at: new Date().toISOString()
             })
-            .eq('id', wallet.id);
+            .eq('id', userWallet.id);
 
           // Create commission transaction
           await supabaseAdmin
             .from('transactions')
             .insert({
               user_id: application.user_id,
-              wallet_id: wallet.id,
+              wallet_id: userWallet.id,
               type: 'COMMISSION',
               amount: commissionAmount,
               status: 'COMPLETED',
@@ -149,10 +240,21 @@ export async function POST(
       }
     }
 
+    // Get final wallet balance for response
+    const { data: finalWallet } = await supabaseAdmin
+      .from('wallets')
+      .select('balance')
+      .eq('user_id', application.user_id)
+      .single();
+
     return NextResponse.json({
       success: true,
       message: 'Application approved successfully',
-      data: updatedApplication
+      data: updatedApplication,
+      wallet_info: serviceAmount > 0 ? {
+        amount_deducted: serviceAmount,
+        remaining_balance: finalWallet?.balance || 0
+      } : null
     });
 
   } catch (error) {
@@ -164,16 +266,17 @@ export async function POST(
 // POST /api/applications/[id]/reject - Reject application
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session || !['ADMIN', 'EMPLOYEE'].includes(session.user.role)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const applicationId = params.id;
+    const { id } = await params;
+    const applicationId = id;
     const body = await request.json();
     const { notes, refund = false } = body;
 

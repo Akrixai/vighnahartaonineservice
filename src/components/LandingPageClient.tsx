@@ -7,7 +7,7 @@ import UserConsent from "@/components/UserConsent";
 import { useState } from "react";
 
 export default function LandingPageClient() {
-  const [consentGiven, setConsentGiven] = useState(false);
+  const [, setConsentGiven] = useState(false);
 
   const handleConsentGiven = () => {
     setConsentGiven(true);

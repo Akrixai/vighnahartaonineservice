@@ -9,6 +9,8 @@ import AdvertisementCarousel from '@/components/AdvertisementCarousel';
 import ReceiptNotifications from '@/components/ReceiptNotifications';
 import PopupAdvertisement from '@/components/PopupAdvertisement';
 import NotificationBell from '@/components/NotificationBell';
+import PopupNotifications from '@/components/notifications/PopupNotifications';
+import ScreenNotifications from '@/components/ScreenNotifications';
 // Removed WhatsAppNotificationTrigger to fix chat initialization errors
 
 
@@ -31,6 +33,7 @@ const menuItems: MenuItem[] = [
   { name: 'Commission Earnings', href: '/dashboard/commission', icon: '💸', roles: [UserRole.RETAILER] },
   { name: 'Service Receipts', href: '/dashboard/receipts', icon: '📄', roles: [UserRole.RETAILER] },
   { name: 'My Orders', href: '/dashboard/orders', icon: '📦', roles: [UserRole.RETAILER] },
+  { name: 'Refunds', href: '/dashboard/retailer/refunds', icon: '🔄', roles: [UserRole.RETAILER] },
   { name: 'Products', href: '/dashboard/products', icon: '🛍️', roles: [UserRole.RETAILER, UserRole.EMPLOYEE] },
   { name: 'Certificates', href: '/dashboard/certificates', icon: '🏆', roles: [UserRole.RETAILER] },
   { name: 'Employee Certificate', href: '/dashboard/employee/certificates', icon: '🏆', roles: [UserRole.EMPLOYEE] },
@@ -55,6 +58,7 @@ const menuItems: MenuItem[] = [
   { name: 'Database Cleanup', href: '/dashboard/admin/data-cleanup', icon: '🗄️', roles: [UserRole.ADMIN] },
   { name: 'Transactions', href: '/dashboard/transactions', icon: '💳', roles: [UserRole.ADMIN, UserRole.EMPLOYEE, UserRole.RETAILER] },
   { name: 'Wallet Approvals', href: '/dashboard/admin/wallet-approvals', icon: '💰', roles: [UserRole.ADMIN, UserRole.EMPLOYEE] },
+  { name: 'Refund Management', href: '/dashboard/admin/refunds', icon: '🔄', roles: [UserRole.ADMIN, UserRole.EMPLOYEE] },
   { name: 'Help & Support', href: '/dashboard/support', icon: '🆘', roles: [UserRole.RETAILER] },
 
   { name: 'My Profile', href: '/dashboard/profile', icon: '👤', roles: [UserRole.ADMIN, UserRole.EMPLOYEE, UserRole.RETAILER] },
@@ -248,6 +252,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
       {/* Receipt Notifications */}
       <ReceiptNotifications />
+
+      {/* Popup Notifications - Only for retailers */}
+      {session?.user?.role === UserRole.RETAILER && (
+        <PopupNotifications />
+      )}
+
+      {/* Screen Notifications - Shows notifications as popups on screen for admin/employee */}
+      {(session?.user?.role === UserRole.ADMIN || session?.user?.role === UserRole.EMPLOYEE) && (
+        <ScreenNotifications />
+      )}
 
       {/* WhatsApp Notification Trigger removed to fix chat initialization errors */}
     </div>

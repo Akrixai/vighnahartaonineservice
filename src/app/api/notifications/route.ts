@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { supabaseAdmin } from '@/lib/supabase';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { UserRole } from '@/types';
@@ -143,6 +143,41 @@ export async function PATCH(request: NextRequest) {
 
   } catch (error) {
     console.error('Error updating notifications:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+// DELETE /api/notifications - Delete all notifications for user
+export async function DELETE(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Only allow ADMIN and EMPLOYEE to delete notifications
+    if (session.user.role !== 'ADMIN' && session.user.role !== 'EMPLOYEE') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const { error } = await supabaseAdmin
+      .from('notifications')
+      .delete()
+      .or(`target_roles.cs.{${session.user.role}},target_users.cs.{${session.user.id}}`);
+
+    if (error) {
+      console.error('Error deleting notifications:', error);
+      return NextResponse.json({ error: 'Failed to delete notifications' }, { status: 500 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'All notifications deleted'
+    });
+
+  } catch (error) {
+    console.error('Error deleting notifications:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

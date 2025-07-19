@@ -208,9 +208,11 @@ export function useRealTimeApplications(userId?: string, enabled = true) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchApplications = async () => {
+  const fetchApplications = async (isInitialLoad = false) => {
     try {
-      setLoading(true);
+      if (isInitialLoad) {
+        setLoading(true);
+      }
       setError(null);
 
       const response = await fetch('/api/applications');
@@ -229,16 +231,18 @@ export function useRealTimeApplications(userId?: string, enabled = true) {
       setError(err instanceof Error ? err.message : 'Unknown error');
       setData([]);
     } finally {
-      setLoading(false);
+      if (isInitialLoad) {
+        setLoading(false);
+      }
     }
   };
 
   useEffect(() => {
     if (enabled) {
-      fetchApplications();
+      fetchApplications(true); // Initial load with loading state
 
-      // Poll for real-time updates every 10 seconds
-      const interval = setInterval(fetchApplications, 10000);
+      // Poll for real-time updates every 10 seconds (without loading state)
+      const interval = setInterval(() => fetchApplications(false), 10000);
       return () => clearInterval(interval);
     }
   }, [enabled, userId]);
@@ -247,7 +251,7 @@ export function useRealTimeApplications(userId?: string, enabled = true) {
     data,
     loading,
     error,
-    refresh: fetchApplications
+    refresh: () => fetchApplications(true)
   };
 }
 

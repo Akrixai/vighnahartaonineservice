@@ -69,16 +69,29 @@ export function useNotifications(userRole?: string, userId?: string) {
       });
 
       if (response.ok) {
-        // Update local state
-        setNotifications(prev => 
-          prev.map(notification => {
-            if (markAllRead || (notificationIds && notificationIds.includes(notification.id))) {
-              return { ...notification, is_read: true };
-            }
-            return notification;
-          })
-        );
-        setUnreadCount(prev => markAllRead ? 0 : Math.max(0, prev - (notificationIds?.length || 0)));
+        // Remove notifications from the list when marked as read
+        if (markAllRead) {
+          setNotifications([]);
+          setUnreadCount(0);
+          // Show toast notification
+          if (typeof window !== 'undefined') {
+            const { showToast } = await import('@/lib/toast');
+            showToast.success('All notifications marked as read');
+          }
+        } else if (notificationIds) {
+          setNotifications(prev =>
+            prev.filter(notification => !notificationIds.includes(notification.id))
+          );
+          setUnreadCount(prev => Math.max(0, prev - notificationIds.length));
+          // Show toast notification
+          if (typeof window !== 'undefined') {
+            const { showToast } = await import('@/lib/toast');
+            showToast.success('Notifications marked as read');
+          }
+        }
+
+        // Refresh notifications to get updated list
+        await fetchNotifications();
       }
     } catch (error) {
       console.error('Error marking notifications as read:', error);
@@ -90,6 +103,7 @@ export function useNotifications(userRole?: string, userId?: string) {
       fetchNotifications();
 
       // Set up real-time subscription for new notifications
+      // Subscribe to notifications for both role-based and user-specific notifications
       const channel = supabase
         .channel('notifications-changes')
         .on(
@@ -97,23 +111,29 @@ export function useNotifications(userRole?: string, userId?: string) {
           {
             event: 'INSERT',
             schema: 'public',
-            table: 'notifications',
-            filter: `target_roles.cs.{${userRole}}`
+            table: 'notifications'
           },
           (payload) => {
             const newNotification = payload.new as Notification;
-            
-            // Add to notifications list
-            setNotifications(prev => [newNotification, ...prev]);
-            setUnreadCount(prev => prev + 1);
 
-            // Show popup notification instead of toast
-            showPopupNotification({
-              title: newNotification.title,
-              message: newNotification.message,
-              type: getNotificationType(newNotification.type),
-              duration: 5000,
-            });
+            // Check if this notification is for the current user
+            const isForUser =
+              (newNotification.target_roles && newNotification.target_roles.includes(userRole)) ||
+              (newNotification.target_users && newNotification.target_users.includes(userId));
+
+            if (isForUser) {
+              // Add to notifications list
+              setNotifications(prev => [newNotification, ...prev]);
+              setUnreadCount(prev => prev + 1);
+
+              // Show popup notification
+              showPopupNotification({
+                title: newNotification.title,
+                message: newNotification.message,
+                type: getNotificationType(newNotification.type),
+                duration: 5000,
+              });
+            }
           }
         )
         .subscribe();
@@ -124,11 +144,43 @@ export function useNotifications(userRole?: string, userId?: string) {
     }
   }, [userRole, userId]);
 
+  const deleteNotification = async (notificationId: string) => {
+    try {
+      const response = await fetch(`/api/notifications/${notificationId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        // Remove notification from the list
+        setNotifications(prev =>
+          prev.filter(notification => notification.id !== notificationId)
+        );
+        setUnreadCount(prev => Math.max(0, prev - 1));
+
+        // Show toast notification
+        if (typeof window !== 'undefined') {
+          const { showToast } = await import('@/lib/toast');
+          showToast.success('Notification deleted successfully');
+        }
+
+        // Refresh notifications to get updated list
+        await fetchNotifications();
+      }
+    } catch (error) {
+      console.error('Error deleting notification:', error);
+      if (typeof window !== 'undefined') {
+        const { showToast } = await import('@/lib/toast');
+        showToast.error('Failed to delete notification');
+      }
+    }
+  };
+
   return {
     notifications,
     unreadCount,
     loading,
     markAsRead,
+    deleteNotification,
     refresh: fetchNotifications
   };
 }

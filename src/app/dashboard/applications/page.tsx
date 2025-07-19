@@ -2,15 +2,18 @@
 
 import { useState } from 'react';
 import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/dashboard/layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { UserRole } from '@/types';
 import { useRealTimeApplications } from '@/hooks/useRealTimeData';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
+import { showToast } from '@/lib/toast';
 
 export default function ApplicationsPage() {
   const { data: session } = useSession();
+  const router = useRouter();
   const [selectedStatus, setSelectedStatus] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -32,13 +35,46 @@ export default function ApplicationsPage() {
   // Filter applications based on search and filters
   const filteredApplications = applications.filter(app => {
     const matchesStatus = selectedStatus === 'ALL' || app.status === selectedStatus;
-    const matchesSearch = searchTerm === '' || 
+    const matchesSearch = searchTerm === '' ||
       app.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       app.schemes?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       app.customer_phone?.includes(searchTerm);
-    
+
     return matchesStatus && matchesSearch;
   });
+
+  // Handle reapply for rejected applications only
+  const handleReapply = (application: any) => {
+    if (application.status !== 'REJECTED') {
+      showToast.error('Only rejected applications can be reapplied');
+      return;
+    }
+
+    // Store the reapply data in sessionStorage to prefill the form
+    const reapplyData = {
+      schemeId: application.scheme_id,
+      isReapply: true,
+      originalApplicationId: application.id,
+      customerData: {
+        name: application.customer_name,
+        phone: application.customer_phone,
+        email: application.customer_email,
+        address: application.customer_address
+      },
+      formData: application.form_data,
+      documents: application.documents,
+      dynamicFieldDocuments: application.dynamic_field_documents
+    };
+
+    sessionStorage.setItem('reapplyData', JSON.stringify(reapplyData));
+
+    // Navigate to the service application page
+    router.push(`/dashboard/services/${application.scheme_id}/apply`);
+
+    showToast.info('Redirecting to reapply form...', {
+      description: 'Your previous data will be prefilled. No charges will apply.'
+    });
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -232,18 +268,38 @@ export default function ApplicationsPage() {
                         <div className={`px-3 py-2 rounded-lg text-sm ${getStatusColor(application.status)}`}>
                           <div className="font-medium">
                             {getStatusIcon(application.status)} {application.status}
+                            {application.notes && application.notes.includes('REAPPLICATION') && (
+                              <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                                REAPPLICATION
+                              </span>
+                            )}
                           </div>
                           {application.status === 'PENDING' && (
-                            <div className="text-xs mt-1">Waiting for admin review</div>
+                            <div className="text-xs mt-1">
+                              {application.notes && application.notes.includes('REAPPLICATION')
+                                ? 'Reapplication waiting for admin review'
+                                : 'Waiting for admin review'
+                              }
+                            </div>
                           )}
                           {application.status === 'PROCESSING' && (
                             <div className="text-xs mt-1">Being processed by admin</div>
                           )}
                           {application.status === 'APPROVED' && (
-                            <div className="text-xs mt-1">Application approved</div>
+                            <div className="text-xs mt-1">
+                              {application.notes && application.notes.includes('REAPPLICATION')
+                                ? 'Reapplication approved'
+                                : 'Application approved'
+                              }
+                            </div>
                           )}
                           {application.status === 'REJECTED' && (
-                            <div className="text-xs mt-1">Application rejected</div>
+                            <div className="text-xs mt-1">
+                              {application.notes && application.notes.includes('REAPPLICATION')
+                                ? 'Reapplication rejected'
+                                : 'Application rejected'
+                              }
+                            </div>
                           )}
                         </div>
                         
@@ -251,6 +307,21 @@ export default function ApplicationsPage() {
                           <div className="bg-gray-50 p-3 rounded-lg">
                             <div className="text-xs text-gray-500 mb-1">Admin Notes:</div>
                             <div className="text-sm text-gray-700">{application.notes}</div>
+                          </div>
+                        )}
+
+                        {/* Reapply Button for Rejected Applications Only */}
+                        {application.status === 'REJECTED' && (
+                          <div className="mt-3">
+                            <Button
+                              onClick={() => handleReapply(application)}
+                              className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm py-2"
+                            >
+                              🔄 Reapply for Service
+                            </Button>
+                            <div className="text-xs text-gray-500 mt-1 text-center">
+                              No additional charges will apply for reapplication
+                            </div>
                           </div>
                         )}
                       </div>

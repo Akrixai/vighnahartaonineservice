@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { supabaseAdmin } from '@/lib/supabase';
 import { UserRole } from '@/types';
 
 // PUT - Update application status (Admin and Employee)
@@ -159,6 +159,8 @@ export async function PUT(
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+
+
 
 // DELETE - Delete application (Admin only)
 export async function DELETE(

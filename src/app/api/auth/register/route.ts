@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { supabaseAdmin } from '@/lib/supabase';
 import { UserRole } from '@/types';
 import { validateEmail, validatePhone } from '@/lib/utils';
 import { sendWelcomeRetailerEmail, sendWelcomeEmployeeEmail } from '@/lib/email-service';

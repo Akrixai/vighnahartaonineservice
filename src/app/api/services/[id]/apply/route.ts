@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { supabaseAdmin } from '@/lib/supabase';
 import { UserRole } from '@/types';
 
 // POST - Apply for a service (Retailer only)
@@ -80,7 +80,7 @@ export async function POST(
 
     const servicePrice = service.is_free ? 0 : parseFloat(service.price);
 
-    // Check wallet balance if service is not free
+    // Check wallet balance if service is not free (but don't deduct yet - deduction happens after approval)
     if (!service.is_free && wallet.balance < servicePrice) {
       return NextResponse.json({
         error: `Insufficient wallet balance. Required: ₹${servicePrice}, Available: ₹${wallet.balance}`
@@ -147,44 +147,23 @@ export async function POST(
 
     console.log('Application created successfully:', application.id);
 
-    // Process payment if service is not free
-    if (!service.is_free && servicePrice > 0) {
-      // Deduct amount from wallet
-      const newBalance = wallet.balance - servicePrice;
-      
-      const { error: balanceError } = await supabaseAdmin
-        .from('wallets')
-        .update({ balance: newBalance })
-        .eq('user_id', userId);
+    // Note: Payment processing will happen after admin approval
+    // Wallet deduction is moved to the approval process
 
-      if (balanceError) {
-        console.error('Error updating wallet balance:', balanceError);
-        // Rollback application creation
-        await supabaseAdmin
-          .from('applications')
-          .delete()
-          .eq('id', application.id);
-        
-        return NextResponse.json({
-          error: 'Payment processing failed'
-        }, { status: 500 });
-      }
-
-      // Create transaction record
-      await supabaseAdmin
-        .from('transactions')
-        .insert({
-          user_id: userId,
-          wallet_id: wallet.id,
-          type: 'SCHEME_PAYMENT',
-          amount: servicePrice,
-          status: 'COMPLETED',
-          description: `Payment for ${service.name}`,
-          reference: application.id,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        });
-    }
+    // Create transaction record
+    await supabaseAdmin
+      .from('transactions')
+      .insert({
+        user_id: userId,
+        wallet_id: wallet.id,
+        type: 'SCHEME_PAYMENT',
+        amount: servicePrice,
+        status: 'COMPLETED',
+        description: `Payment for ${service.name}`,
+        reference: application.id,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      });
 
     return NextResponse.json({
       success: true,
@@ -196,8 +175,8 @@ export async function POST(
 
   } catch (error) {
     console.error('Error processing service application:', error);
-    return NextResponse.json({ 
-      error: 'Internal server error' 
+    return NextResponse.json({
+      error: 'Internal server error'
     }, { status: 500 });
   }
 }

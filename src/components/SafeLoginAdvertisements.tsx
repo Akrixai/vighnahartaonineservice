@@ -113,7 +113,7 @@ export default function SafeLoginAdvertisements({ className = '' }: SafeLoginAdv
     setCurrentIndex((prev) => (prev - 1 + advertisements.length) % advertisements.length);
   };
 
-  const currentAd = advertisements[currentIndex];
+  const currentAd = advertisements[currentIndex] || fallbackAds[0];
 
   if (isLoading) {
     return (

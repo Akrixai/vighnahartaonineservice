@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { supabaseAdmin } from '@/lib/supabase';
 import { UserRole } from '@/types';
 
 export async function POST(request: NextRequest) {
@@ -169,7 +169,7 @@ export async function POST(request: NextRequest) {
       }, { status: 500 });
     }
 
-    // If there's a service fee, deduct from wallet
+    // If there's a service fee, check wallet balance but don't deduct yet
     if (servicePrice > 0) {
       // Get user's wallet
       const { data: wallet, error: walletError } = await supabaseAdmin
@@ -184,9 +184,9 @@ export async function POST(request: NextRequest) {
           .from('applications')
           .delete()
           .eq('id', application.id);
-        
-        return NextResponse.json({ 
-          error: 'Wallet not found' 
+
+        return NextResponse.json({
+          error: 'Wallet not found'
         }, { status: 400 });
       }
 
@@ -196,33 +196,13 @@ export async function POST(request: NextRequest) {
           .from('applications')
           .delete()
           .eq('id', application.id);
-        
-        return NextResponse.json({ 
-          error: 'Insufficient wallet balance' 
+
+        return NextResponse.json({
+          error: 'Insufficient wallet balance'
         }, { status: 400 });
       }
 
-      // Deduct amount from wallet
-      const { error: updateWalletError } = await supabaseAdmin
-        .from('wallets')
-        .update({
-          balance: wallet.balance - servicePrice,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', wallet.id);
-
-      if (updateWalletError) {
-        console.error('Error updating wallet:', updateWalletError);
-        // Rollback application creation
-        await supabaseAdmin
-          .from('applications')
-          .delete()
-          .eq('id', application.id);
-        
-        return NextResponse.json({ 
-          error: 'Failed to process payment' 
-        }, { status: 500 });
-      }
+      // Note: Wallet deduction will happen after admin approval
 
       // Create transaction record
       await supabaseAdmin
@@ -248,8 +228,8 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Error processing Aadhaar verification application:', error);
-    return NextResponse.json({ 
-      error: 'Internal server error' 
+    return NextResponse.json({
+      error: 'Internal server error'
     }, { status: 500 });
   }
 }

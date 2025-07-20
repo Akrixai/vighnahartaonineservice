@@ -63,8 +63,9 @@ export async function POST(
       }, { status: 400 });
     }
 
-    // Get the service amount (use scheme price or application amount)
-    const serviceAmount = parseFloat(application.schemes?.price?.toString() || application.amount?.toString() || '0');
+    // Get the service amount (for reapplications, amount should be 0, for regular applications use scheme price or application amount)
+    const isReapplication = application.notes && application.notes.includes('REAPPLICATION');
+    const serviceAmount = isReapplication ? 0 : parseFloat(application.schemes?.price?.toString() || application.amount?.toString() || '0');
 
     if (serviceAmount > 0) {
       // Check wallet balance
@@ -167,17 +168,15 @@ export async function POST(
     if (!application.commission_paid) {
       try {
         const commissionRate = application.schemes?.commission_rate || 0;
-        // For commission calculation, use original scheme price even for reapplications
-        const isReapplication = application.notes && application.notes.includes('REAPPLICATION');
-        const applicationAmount = isReapplication ? parseFloat(application.schemes?.price?.toString() || '0') : serviceAmount;
-        const commissionAmount = (applicationAmount * commissionRate) / 100;
+        // For commission calculation, always use original scheme price (both for regular and reapplications)
+        const schemePrice = parseFloat(application.schemes?.price?.toString() || '0');
+        const commissionAmount = (schemePrice * commissionRate) / 100;
 
         console.log('Commission calculation:', {
           isReapplication,
-          applicationAmount,
+          schemePrice,
           commissionRate,
           commissionAmount,
-          schemePrice: application.schemes?.price,
           serviceAmount
         });
 

@@ -90,6 +90,32 @@ const cleanupTasks: CleanupTask[] = [
     minDays: 1, // Minimum 1 day
     maxDays: 1095,
     timeUnit: 'days'
+  },
+  {
+    id: 'old-documents',
+    name: 'Old Documents',
+    description: 'Remove old document records (files remain in storage)',
+    icon: <FileText className="w-5 h-5" />,
+    dataType: 'documents',
+    riskLevel: 'medium',
+    estimatedSpace: '~20MB',
+    defaultDays: 90,
+    minDays: 1,
+    maxDays: 365,
+    timeUnit: 'days'
+  },
+  {
+    id: 'inactive-users',
+    name: 'Inactive Users',
+    description: 'Remove inactive retailer accounts (minimum 30 days)',
+    icon: <Settings className="w-5 h-5" />,
+    dataType: 'applications', // Using applications as proxy for user activity
+    riskLevel: 'high',
+    estimatedSpace: '~5MB',
+    defaultDays: 365,
+    minDays: 30, // Minimum 30 days for user deletion
+    maxDays: 1095,
+    timeUnit: 'days'
   }
 ];
 
@@ -169,7 +195,7 @@ export default function DataCleanupPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ taskId, customDays: daysToDelete }),
+        body: JSON.stringify({ task: taskId, customDays: daysToDelete }),
       });
 
       const result = await response.json();
@@ -178,7 +204,14 @@ export default function DataCleanupPage() {
         showToast.success(`${task.name} cleaned up successfully!`, {
           description: `Removed ${result.deletedCount} records, freed ${result.spaceFreed}`
         });
-        fetchDataStats(); // Refresh stats
+        await fetchDataStats(); // Refresh stats immediately for real-time update
+
+        // Trigger a global refresh for other components that might be affected
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('dataCleanupCompleted', {
+            detail: { taskId, deletedCount: result.deletedCount }
+          }));
+        }
       } else {
         showToast.error(`Failed to clean up ${task.name}`, {
           description: result.error || 'Unknown error occurred'

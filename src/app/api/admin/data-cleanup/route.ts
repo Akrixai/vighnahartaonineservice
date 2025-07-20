@@ -36,10 +36,31 @@ export async function POST(request: NextRequest) {
 
     switch (taskId) {
       case 'old-applications':
-        // Delete applications with status REJECTED or COMPLETED
+        // Delete applications with status REJECTED or COMPLETED and their related data
         const appDays = Math.max(customDays || 180, 1); // Default 6 months, minimum 1 day
         const appCutoff = getCutoffDate(appDays);
 
+        // First, delete related transactions for these applications
+        const { data: relatedTransactions } = await supabaseAdmin
+          .from('transactions')
+          .select('id')
+          .in('reference',
+            await supabaseAdmin
+              .from('applications')
+              .select('id')
+              .lt('created_at', appCutoff)
+              .in('status', ['REJECTED', 'COMPLETED'])
+              .then(result => result.data?.map(app => `APP_${app.id}`) || [])
+          );
+
+        if (relatedTransactions && relatedTransactions.length > 0) {
+          await supabaseAdmin
+            .from('transactions')
+            .delete()
+            .in('id', relatedTransactions.map(t => t.id));
+        }
+
+        // Then delete the applications
         const { data: oldApps, error: deleteAppsError } = await supabaseAdmin
           .from('applications')
           .delete()
@@ -114,7 +135,46 @@ export async function POST(request: NextRequest) {
         spaceFreed = `~${Math.round(deletedCount * 0.1)}MB`;
         break;
 
+      case 'old-documents':
+        // Delete old document records (but not the actual files from storage)
+        const documentDays = Math.max(customDays || 90, 1); // Default 3 months, minimum 1 day
+        const documentCutoff = getCutoffDate(documentDays);
 
+        const { data: oldDocuments, error: deleteDocumentsError } = await supabaseAdmin
+          .from('documents')
+          .delete()
+          .lt('created_at', documentCutoff)
+          .select('id');
+
+        if (deleteDocumentsError) {
+          throw new Error(`Failed to delete old documents: ${deleteDocumentsError.message}`);
+        }
+
+        deletedCount = oldDocuments?.length || 0;
+        spaceFreed = `~${Math.round(deletedCount * 2)}MB`;
+        break;
+
+      case 'inactive-users':
+        // Delete inactive users (not logged in for specified days) - ADMIN only
+        const userDays = Math.max(customDays || 365, 30); // Default 1 year, minimum 30 days
+        const userCutoff = getCutoffDate(userDays);
+
+        // Only delete RETAILER users who haven't been active
+        const { data: inactiveUsers, error: deleteUsersError } = await supabaseAdmin
+          .from('users')
+          .delete()
+          .lt('updated_at', userCutoff)
+          .eq('role', 'RETAILER')
+          .eq('is_active', false)
+          .select('id');
+
+        if (deleteUsersError) {
+          throw new Error(`Failed to delete inactive users: ${deleteUsersError.message}`);
+        }
+
+        deletedCount = inactiveUsers?.length || 0;
+        spaceFreed = `~${Math.round(deletedCount * 1)}MB`;
+        break;
 
       default:
         return NextResponse.json({ error: 'Invalid task ID' }, { status: 400 });

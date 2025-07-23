@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Seed Services</title>
+</head>
+<body>
+    <h1>Seed Services</h1>
+    <button onclick="seedServices()">Seed Services</button>
+    <div id="result"></div>
+
+    <script>
+        async function seedServices() {
+            try {
+                const response = await fetch('/api/debug/seed-services', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const result = await response.json();
+                document.getElementById('result').innerHTML = '<pre>' + JSON.stringify(result, null, 2) + '</pre>';
+            } catch (error) {
+                document.getElementById('result').innerHTML = 'Error: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>
